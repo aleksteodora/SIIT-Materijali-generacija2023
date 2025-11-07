@@ -1,0 +1,9 @@
+bila su dva zadatka: 
+
+prvi 
+a)nešto je bilo preko hesijana da se uradi (da se dokaže ili ispita karakter neke tačke, tako nešto)
+b)metod najmanjih kvadrata, da nađemo a,b y=ax+b ako su date neke tri tačke
+c)KKT da se dokaže da je tačka (0,1) min ili maks
+d)metod lagranževih množitelja, da se počne samo - potrebni i dovoljni uslovi mislim (bilo je jedno ograničenje tipa jednakosti samo)
+
+drugi je bio simpleks metod, mislim da se u tri koraka dobije rešenje (rešenje je bilo nešto/3, pa onda šta radimo sa tim..)
