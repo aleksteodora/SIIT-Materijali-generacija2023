@@ -1,0 +1,109 @@
+NASP - Prezentacija 11 (24.12.2021.)
+
+
+-danas radimo drugi deo za naš projekat, put čitanja podataka (read path), kako funkcioniše keširanje, jedan čest algoritam prilikom implementacije keša - LRU (least recently used)
+
+-sstable data čuva niz parova ključ, vrednost gde su ključevi sortirani i zapisani na disk
+-sstable nastaje kad se memtable popuni, sortiramo ključeve i zapišemo na disk
+-indeks ima ključ i offset (pozicija ključa u fajlu), nije loše ni indeks da bude sortiran
+-neki sistemi čuvaju dodatni element za ubrzanje čitanja, čuvamo određeni ključ i njegovu poziciju u fajlu
+-imali smo dosta sstable-a na disku i treba dodatno ubrzanje
+-bloom filter - kažemo koliko elemenata želimo unutar njega, proverimo da li je određen ključ možda prisutan na nekom čvoru
+-ako je ključ možda tu, pitamo summary, pa ako on kaže da je ključ sigurno tu - idemo po indeksu i idemo u data deo
+-dodatno, formiramo metadata deo - merkle stablo data delova
+-indeks, summary, bloom filter, metadata i data čine jedan sstable
+-formiranje sstable može se formirati u pozadini, da radi jedna nit bez kočenja sistema
+
+-PUT ČITANJA
+-podatke uvek prvo zapisujemo u memoriju koristeći memtable i pravimo kopiju u commit log (wal)
+-ako nesto hoćemo da pročitamo, prvo pitamo memtable jer su tu NAJSVEŽIJE INFORMACIJE, ako nisu tu, moramo pretraživati bloom filtere, gledati summary i pristupiti disku
+-zašto kreiramo ovoliko elemenata - da što pre stignemo do podatka AKO je on tu, da što pre iznavigiramo do nekog fajla zato pravimo indekse
+-summary je dosta manji od indeksa, pa ga možemo učitati u memoriju ili deo učitati u memoriju i samim tim zaključiti "e, podatak nije tu, nema potrebe da se skenira išta"
+-read path - ispravan prolazak, od kad korisnik traži ključ, prolazimo kroz sve elemente sstable
+
+-kako to cassandra radi - kada korisnik pošalje zahtev da dobije ključ, prvo pitamo memtable
+*ako je tu - dobijemo ključ nazad i sve je idealno
+*ako ključ nije u memtable - možemo pitati row key cache
+  **ako je tu - verovatno smo pristupali tim podacima skoro
+  **ako ključ nije tu - možemo pitati bloom filter
+    ***ako ključ nije tu - kraj
+    ***ako je možda tu - pitamo partition key cache, pa ako nije tu - pitamo summmary, pa pitamo indeks
+-element možemo posmatrati kao komponente koje kombinujemo u celinu da dobijemo neke informacije
+-cassandra koristi dva ključa imaju opštiji model, mi imamo jedan ključ, pa je još jednostavnije
+
+-cache se nalazi pre bloom filtera, može dodatno ubrzati posao - poslednja stvar koja nam ubrzava posao je bloom filter..
+-cache se nalazi u memoriji i dodatno nam pomaže da ubrzamo posao
+-sta radi keš memorija - cela ideja je da ubrzamo neki posao
+-keširanje podataka je proces koji skladišti više kopija podataka ili datoteka na privremene lokacije za skladište - keš
+-keš čuva podatke za aplikacije, servere i veb pretraživače, ali i sistemski softver
+-kad padne fb dosta vremena će trebati da se povrati, dok se ne popuni keš
+-ne moramo svaki put tražiti sliku sa diska, već je možemo dobiti odmah iz keša
+-disk je relativno jeftin i ima ga dosta, memorije nemamo puno i skupa je
+-ako se sistem resetuje, naših podataka iz memorije nema, tako da u memoriji čuvamo podatke kojima se relatuvno skoro pristupalo (ako smo tražili skoro neku informaciju, postoji mogućnost da ćemo je opet tražiti)
+
+-razni su načini kako da čuvamo podatke u kešu -odvojimo fiksnu veličinu i čuvamo te podatke (izbacujemo stare podatke iz keša kad dolaze novi ako više nema mesta)
+-možemo izbacivati stare kad se dodaju novi ili da definišemo ŽIVOT PODATAKA U KEŠU - TTL
+-za svaki podatak specificiramo koliko hoćemo da on živi
+
+-kako čuvamo podatke u kešu, koliko dugo, kad ih izbacujemo? --> ne postoji tačan odgovor
+(jedna strategija se ne može primeniti na sve slučajeve, zavisi od korišćenja)
+-strategija da uvek koristimo što jednostavnije strukture koje će rešiti posao - lakše je to uraditi, razumeti, održavati
+-pitanje je kako će se neka nova struktura pokazati, da li je dovoljno testirana..
+-veliki sistemi (fb, google, amazon) teže da koriste jednostavne algoritme jer tačno znaju šta se dešava, kako mogu da optimizuju itd.
+
+-keš sistemi obično imaju zahteve koji treba da se ispune - treba da:
+*ograničimo memoriju koju imamo (ne želimo da pojedemo sve resurse)
+*želimo da imamo brz prisup, dodavanje i traženje da bude što brže
+*zamena unosa, da izbacujemo elemente kada je keš memorija puna
+(ova tri zahteva se stavljaju pred implementaciju bilo kog keša - obično u nekoj konfiguraciji je ta fiksna veličina, izbacivanje može biti isto u konfigiguraciji ako imamo npr. više strategija za izbacivanje)
+
+-kako da ispunimo ove zahteve, struktura i algoritam?
+-LRU je najpopularniji keš algoritam - organizuje elemente po redosledu korišćenja i identifikuje koja stavka nije korišćena duže vreme
+(pr. stalak za odeću, odeću koju koristimo kačimo na jednu stranu)
+-ako uzmemo neki element iz LRU šta radimo sa pozicijama (da imamo način da premeštamo element sa neke pozicije na pocetak)
+-najdešnje ubacujemo najnovije elemente, a kada uzimamo element iz keša - vršimo rotaciju tako da on dođe na početak, a ostale pomerimo ulevo
+
+-prednosti i mane LRU keširanja
+-super brz pristup pošto čuvamo stavke od najčešće do najređe korišćenih
+-brzo ažuriranje, takođe u konstantnom vremenu
+-mana - LRU keš koji sadrži n stavki zahteva spregnutu listu od n stavki i hash mapu od n stavki (to je priličan broj podataka i imamo dve strukture)
+-prednosti su što je sve super brzo, ali zauzimamo više mesta (nije toliki problem jer zauzmemo neko fiksno parče memorije i kažemo to je naš keš, pa ćemo malo progledati kroz prste za ovu manu)
+(svaki algoritam će imati svoje prednosti i mane)
+
+-šta da skladištimo u ovaj keš
+-ako padne sistem nestaće keš, ali bloom filter može da se rekonstruiše ponovo
+-keš je poslednji element koji nam fali da upotpunimo read path, on čuva elemente kojima je korisnik poslednje pristupao
+-ne smemo gubiti informacije da smo pristupali nekoj informaciji, a ako podatak uopšte nije u kešu - onda proveravamo da li je podatak uopšte tu
+-keš je dodatna stvar koja pomaže da još ubrzamo sistem time što ćemo odbiti malo memorije (uzeti za keš)
+
+-ako elementa nema u kešu, bloom filter učitamo sa diska i vidimo da li je ključ možda tu za svaku sstable koja se nalazi na disku
+-ako je možda tu - pitamo summary i vidimo da li je ključ u tom opsegu
+*ako nije - kraj
+*ako jeste - tražimo u indeks strukturi i uzimamo offset
+-kad imamo offset, možemo se pozicionirati na data deo, pročitati podatak i vratiti ga korisniku
+
+-kako nam ovde zapravo pomaže keš, gde ćemo njega ubaciti?
+-kad dođemo do podatka u data delu, upisujemo ga u keš (osvežavamo) jer smo mu pristupali u tom momentu
+-keš ažuriramo svaki put kada je korisnički podatak lociran (znači svaki put kada dobavimo podatak, pre nego što ga vratimo korisniku, mi ga upisemo u keš i kad upišemo u keš, možemo ga vratiti korisniku)
+-sledeći put kad korisnik proba da ponovo pristupi tom podatku, mi ga čitamo iz keša (ako je tu), nema potrebe da idemo indeks, summary, data..
+-što frekventnije pristupamo nekom podatku, on će duže biti u memoriji
+
+-keševi imaju još jednu specifičnu stvar koja se zove PROMAŠAJ KESA i to je ishod u kom sistem proba da pristupi kešu, a podaci trenutno nisu u keš memoriji (to se beleži u nekim sistemima zbog promene politike keširanja - kad, kako da keširamo, koliko da keširamo itd.)
+-za te stvari se u velikim sistemima razvijaju adaptivni algoritmi koji gledaju koliko često određene grupe korisnika ili određeni korisnici i na koji način pristupaju podacima da bi izbacivali podatke iz keša (kada se očekuje da korisnici ne pristupaju podacima, odnosno upisuju se informacije u keš kada se očekuje da korisnici pristupaju podacima - zato gledamo promašaje keša)
+
+-kada se uputi nekakav zahtev za BRISANJE ključa, pored toga što ga upisujemo u memtable, treba proverimo da li se takav podatak nalazi i u kešu (ako se nalazi, možemo ga obrisati iz keša i osloboditi jedno mesto)
+-da se obezbedimo da nam pri ponovnom pristupanju keš ne vrati taj podatak i time nas prevari ako je podatak obrisan (podatak moramo obrisati sa svih mesta da ne bismo imali nekonzistentan odgovor za korisnika)
+
+-dakle, kada korisnik pozove get i prosledi mu nekakav ključ, prva struk koju pitamo je mmmtable
+*ako je nalazi - sve je okej, vratimo informaciju
+*ako informacija nije u memtable - onda pitamo keš
+  **ako jeste tu - odmah vratimo korisniku i update-ujemo keš da taj podatak kome smo pristupali bude na početku
+  **ako podatak nije u kešu - moramo krenuti da skeniramo informaciju kroz disk (za svaku sstable na disku učitamo bloom filter; prvo učitamo bloom filter  za prvu sstable i proverimo da li je podatak tu, ako podatak nije tu, učitamo za sledeću sstable i ako prođemo kroz sve sstable i one kažu da podatak nije tu - vraćamo korisniku 100% informaciju da podatak nije tu)
+    ***ako neki od bloom filtera kaže da je podatak ovde, onda moramo učitati SSTABLE SUMMARY U MEMORIJU i videti da li se taj pod 100% nalazi tu
+      ****ako nije tu - vratimo mu
+      ****ako jeste - moramo se pozicionirati na indeks iz indeksa, dobijemo offset na osnovu čega se pozicioniramo na data deo i uzmemo podatak
+-tada ono što prvo moramo uraditi jeste update keša (u keš upisujemo ključ i vrednost podatka kome smo poslednje pristupali) i tek onda vratimo informaciju korisniku nazad
+
+-kada upisujemo podatke u sistem, prvo ih upisujemo u commit log (wal), pa u memtable i kad se dostigne neka veličina memtable, flush-ujemo tu informaciju na disk praveći sstable i sve strukture koje nam trebaju (PUT i DELETE operacija)
+-kada korisnik želi da uputi GET zahtev, onda pitamo memtable, pa ako nije tu pitamo keš, pa ako nije tu pitamo bloom filter, pa ako nije tu UČITAVAMO sstable summary, pa idemo po indeksu, pa data, ažuriramo keš i vratimo korisiku
+(to je sve što treba da implementiramo u našem projektu) 

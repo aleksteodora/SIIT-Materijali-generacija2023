@@ -1,0 +1,135 @@
+-ovo je možda najkomplikovaniji deo, za najviše ocene jako bitno
+-LSM stabla, kompakcije i amplifikacije
+
+-podsećanje - memtable, sve što radimo je da podatke pišemo i čitamo iz memorije, memorija je jako brza, super, kul; problem je što nemamo beskonačno memorije i ne možemo probiti ogranicenja
+-ako su podaci u memoriji, sve operacije su jako brze, dok su na disku dosta sporije, ali memorija ima manu zato što nije sigurna (ako dođe do restarta, nestaju podaci iz memorije)
+-treba nam neka sigurnost - wal je radio u sprezi sa memtable, wal je davao snažnu sigurnost za trajnost naših podataka koji se nalaze u memoriji
+-korisno kod jako velikog broja zapisa (write heavy - pr. socijalne mreže)
+-posto je memtable fiksna struktura, kad se napuni, ona se perzistira na disk i na disku nastaje slična struktura koja se zove sstable i koja je nepromenljiva
+-memtable možemo podešavati zavisno od resursa koje imamo, para,..
+
+-put zapisa - kada korisnik hoće nešto da zapiše, sačuva u sistem, operacija prvo ide u commit log da bismo dobili trajnost podataka (commit log = wal), kad wal potvrdi da je informacija zapisana, možemo je smestiti u memtable koji kad se popuni, skladištimo na disk (flush, praznimo memtable, sortiramo podatke, pravimo indeks i smestimo kao neki fajl na disku) - od toga nastaje sstable (cela ideja da imamo parove ključ, vrednost koji su sortirani i zapisani na disk kao nepromenljiva struktura)
+
+-sstable se sastoji od nekoliko elemenata i svi su potrebni da rad nešto sa sstable i formiraju se kada se formira sam sstable
+-prvi element je bloom filter sa dostupnim ključevima koje ta sstabela ima, onda data segment (pravi podaci, ti ključevi vrednosti), indeks - tačno znamo na kojoj poziciji je koji podatak (parovi ključ, offset), summary koji kaže da li je ključ u opsegu tog sstable
+-imamo i TOC fajl gde kažemo šta je sve od fajlova zapisano i potrebno je i da formiramo merkle stablo od podataka iz data segmenta i kada je formirano, možemo ga zapisati u metadata.txt fajl
+(neki sistemi kao cassandra pišu sve ove stvari kao nezavisne fajlove - fajl za svaki od elemenata, dok drugi kao RocksDB ili LevelDB naprave jedan fajl i sve to stave u njega - znamo koliko bajtova je data, indeks, summary segment itd. i onda se pozicioniramo po tom jednom fajlu)
+-ove strukture omogućavaju nam zauzimanje malo prostora
+
+-put čitanja - pričali smo prošli put
+-put brisanja - kada se neki podatak obriše, on nije momentalno obrisan sa diska, već zapisujemo specijalni podatak tombstone gde kažemo "ovaj podatak je markiran za brisanje" i pored toga stoji vremenska odrednica kada se to zapravo desilo --> podsledica da je brisanje zapravo nov zapis u memtable, sstable (sstable je nepromenljiva struktura)
+-fizičko brisanje tih ključeva koji treba da se obrišu se dešava tokom jednog specifičnog procesa koji se zove KOMPAKCIJA
+
+-pitanje - koji problem se može javiti kod write path-a, read path-a? --> konstantno trpamo podatke u naš disk i segmentiraćemo disk jako puno jer imamo dosta fajlova, ali se i isti podatak može nalaziti u dosta fajlova (imamo puno fajlova, a imamo i puno zapisa istog podatka --> problem kod read path-a je da ustanovimo šta je ispravno od toga, moramo proći kroz puno fajlova i nekim algoritmom ustanoviti šta je podatak koji nama treba)
+-dakle, ako podatak nije više validan, trebalo bi da ga uklonimo sa diska (pojedemo puno prostora zato što smo hteli nešto da obrisemo)
+-moramo ustanoviti šta je istina, koji podaci su aktivni (kod velikog broja čvorova, distribuirani sistemi - imamo i neke replikacije pa dodatno umnožavamo te bespotrebne podatke) --> ove stvari se moraju brzo rešavati
+
+-pr. kako ustanoviti šta je najsvežije, šta je aktuelno (prva ideja - vreme kad je naš podatak sačuvan), ali druga ideja - možemo da nametnemo našim sstabelama neku strukturu (da upotpunimo ideju kad je neki podatak sačuvan)
+-sstable ne postoje rasute same po disku bez nekog reda, često se pominju u kontekstu veće strukture LSM (log structured merged trees stabla)
+-sstable je struktura tipa loga, možemo upisivati podatke na disk, ne možemo ih menjati, možemo čitati podatke iz njega
+-sstabele grade lsm stablo (znači da su lsm stabla strukture tipa loga, ali nemaju nijednu drugu logiku sem toga što kažu "ove sstabele su ovaj lsm nivo" i tjt) - namećemo neki poredak kod sstabela da bismo sa njima mogli nešto da radimo
+
+-ideja je nastala davno, koristi se u svim velikim sistemima
+-obe strukture su optimizovane za sekvencijalan rad, pokazuju dobre performanse na svim tipovima diskova
+-lsm stabla se lako prilagođavaju bilo kakvim fomatima podataka (ovde pričamo o najjednostavnijim strukturama ključ-vrednost; cassandra je code-based baza gde imamo redove i kolone i na preseku dva ključa tražimo nekakav podatak), kakvu god strukturu da imamo, možemo prilagoditi lsm tome bez ikakvih problema
+
+-lsm stabla - osnovna ideja je implementacija rezidentnih stabala diska sličnih b stablu, najčešće podsećaju na b stabla jer ljudi kada pričaju o lsm stablima najčešće ih upoređuju sa b stablima
+-lsm stabla NEMAJU NIKAKVU FIZIČKU STRUKTURU - nećemo mi programirati lsm stablo (kao npr. što radimo sa b stablom), ona samo kažu kako su sstabele uređene, u kom su odnosu i na kom nivou
+-razlika je što je lsm stablo optimizovano za sekvencijalan pristup disku i čvorovi mogu imati punu zauzetost
+-naglasak lsm stabala je na dozvoljavanju nepromenljive spojive datoteke (imamo datoteke na nekim nivoima i možemo da ih spojimo na određen način da bismo obrisali viškove ili da bismo izvukli ono što je poslednja vrednost)
+-druga ideja je da pravimo hijerarhiju
+-to štoo kažemo da je nešto implementirano kao lsm stablo ne govori nužno ništa o složenosti pretraživanja ili unutrašnjem izgledu datoteke, već samo o KONCEPTUALNOJ STRUKTURI
+-ne pišemo kod koji se zove lsm stablo, već pravimo sstabele i organizujemo ih u koncept strukture koju zovemo lsm stablo; nad tom konceptualnom strukturom, odnosno nad tim nivoima izvršavamo operacije
+-lsm - struktura podataka napravljena da obezbedi jeftino indeksiranje datoteka koje imaju visok stepen dodavanja i brisanja (lep primer za ovo je strim podataka)
+-pretraga mora biti česta da bi se održavala ta struktura indeksa, da možemo pristupati najnovijim podacima, sekvencijalne operacije  ne dolaze u obzir, užasne performanse
+
+-pošto govorimo o stablu - lsm stablo ima nivoe (mora imati bar dva) - dvokomponentno stablo ima prvu C0 komponentu koja je dosta manja i nalazi se u memoriji i C1 komponentu koja se cela nalazi na disku
+-n-komponentno stablo - 1 struktura u memoriji, n-1 na disku
+-podaci se uvek prvo upisuju na taj nulti nivo, a onda se podaci prelivaju na prvi sledeći nivo..
+
+-nivo C0 služi kao BAFER ZA ZAPIS da bi se zapis desio što pre, da bismo korisniku što pre vratili informaciju da nastavi dalje (jeftino je dodati podatak u C0 jer se nalazi u memoriji a memorija je brza)
+-broj nivoa je konfigurabilan i možemo specificirati koliko god da nam je potrebno
+-podaci se zapisuju u C0 pa se odatle emigriraju u C1 nivo (poznato?) - u našem slučaju C0 je memtable, promenljiva je, sluđi kao bafer da amortizuje sporost diska, a C1 treba da se nalazi na disku (kad se memtable popuni, mi ga flash-ujemo na disk i pravimo sstable) - C1 nivo je sstable
+-mozemo proglasiti da je svaki nivo n sstabela ili da svaki sledeći nivo ima dva puta više elemenata od prethodnog
+
+-mi lsm stabla ne programiramo, samo proglasimo da je nešto nivo i kad ga proglasimo za nivo kažemo šta sve taj nivo treba da zadovolji (da li broj sstabela, da li veličina sstabela, da li oba..)
+
+-google search engine jedan je od prvih koristio lsm stabla, na jednostavan način su rešili komplikovan problem
+-problem - pošto broj sstabela stalno raste -->
+u srcu svake lsm strukture je proces koji se zove "spajamo tabele" i taj proces se zove KOMPAKCIJA
+-ovi algoritmi ne moraju biti jednostavni i često nisu, ali je ideja iza kompakcije često jako jednostavna (ne znači da lsm stsbla rade samo u kontekstu vremenskih serija - vremenske serije su podaci opisani nekom vrednošću i vremenskom odrednicom kad se ona desila)
+-ideja - spajamo sstabele i brišemo nepotrebne podatke (pravimo novu tabelu, prepišemo šta nam treba, ostalo možemo obrisati)
+
+-obično se opisuju dva nivoa kompakcija:
+*minor kompakcija - smatra se kada memtable flush-ujemo na disk, spucamo na memtable na disk i formira se sstable (neke male izmene)
+*major kompakcija - spajanje više sstabele (više jer imamo više nivoa) - trajanje je u zavisnosti od veličine
+
+-slika (trouglovi) imamo C0 (naša memtabela), merge je naša operacija flush (spucamo na disk i napravimo C1 nivo) i kako punimo te nivoe, mi spajamo te tabele dok ne dođemo do najvišeg nivoa koji smo specificirali u konfiguracionom fajlu
+-zbog strukture sstabela ova operacija spajanja je jako efikasna jer koristimo algoritam koji podseća na merge sort (imamo sortirane podatke i samo idemo kroz njih i spajamo u novu tabelu)
+-rezultujući fajl će imati isto svojstvo, ne moramo sortirati fajl koji smo napravili.. jer su prethodno već bile sortirane
+
+-pravljenje indeksne datoteke može biti SKUPLJA OPERACIJA u smislu SLOŽENOSTI (vremena koliko će nam trebati da napravimo)
+-BITNO - kada formiramo novu sstabelu, sve informacijw  od prethodnih sstabela koje nam više ne trebaju moramo obrisati
+-kad smo kreirali novu sstabelu moramo FORMIRATI SVE ONE ELEMENTE ZA NJU! (bloom filter, indeks, summary, merklestablo)
+-imamo novo stanje našeg sistema, pa morsmo sve novo napraviti
+
+-kompakcije - proces spajanja, proces spajanja je jako bitna stvar kod formiranja lsm stabala jer njim čistimo disk od nepotrebnih stvari i proces čitanja je dosta brđi
+-treba da izađemo iz problema (biće svakako problem), TRI STVARI koje nikada ne treba da izgubimo iz vida:
+*garancija složenosti
+*logika brisanja
+*amplifikacija sadržaja
+(prethodna slika - sve prethodne elemente brišemo, ostaje samo onaj koji je nastao spajanjem sa nižeg nivoa)
+
+-GARANCIJA SLOŽENOSTI - isto kao sapajanje sort kolekcija, uvek imamo O(N) overhead memorije gde je N količina sstable koje treba spojiti
+-iteratori uvek moraju pokazivati na iste pozicije da bismo mogli da prolazimo i kreiramo novu
+-sekvencijalno pisanje i čitanje pomažu održavanju dobrih garancija performansi
+-ovo radimo lančano dokle god imamo odgovarajući broj tabela na svakom nivou i dokle god imamo odgovarajući broj nivoa (na svakom nivou moramo spojiti šta treba i formirati nov nivo - do max broja nivoa iz konfiguracije) - može se desiti da na poslednjem nivou imamo nekih n tabela i to je skroz ok
+
+-LOGIKA BRISANJA - shadowing-neophodan da odradimo ažuriranje, brisanje i da te stvari funkcionišu (brisanje u sstable se radi zapisivanjem specijalne oznake tombstone, a ažuriranje samo nov zapis sa skorijom vremenskom oznakom) --> uvek moramo uporediti vremensku odrednicu i videti šta je poslednje stanje tog našeg podatka (šta je poslednje zapisano i da li je podatak obrisan)
+-imamo elemente u različitim nivoima - gde su novije informacije - u nižim nivoima su najsvežiji podaci (te tabele na nižim nivoima su znatno manjeg kapaciteta, pa često želimo da ih spajamo sa narednim nivoima)
+pr. L0 nivo 8mb, L1 10mb, L2 100mb, L3 GB.. na nivou 6 su vel. 1TB
+-veličina - zavisno od toga šta pravimo, verovatno u prvom slučaju možemo pogrešiti, to nije loše (možemo naučiti iz grešaka)
+-ne znamo kada je naš sistem popularan, koliko će naš sistem biti korišćen, u konfiguracionom fajlu kažemo koliko nivoa imamo, veličina tabele na svakom nivou, kako radimo proces spajanja i onda naš sistem može nastaviti da radi, samo promenimo šta treba u konfiguracionom fajlu
+
+-ALGORITMI I AMPLIFIKACIJE
+-postoji nekoliko algorirama za kompakcije
+*size-tiered kompakcija
+*leveldb je uveo leveled kompakciju
+*skontalo se da su ona dva algoritma ekstremi, svako na svoju stranu, pa su nastali hibridni algoritmi koji uzimaju dobro od oba ekstrema da bismo poboljšali nezgodne strane (hibridnih algoritama ima mali milion, obično nisu jednostavni za razumeti, mi ćemo se fokusirati na prva dva)
+
+-svi ovi algoritmi moraju rešiti probleme amplifikacije, imamo:
+*amplifikaciju čitanja - označava broj operacija koje se dešavaju na disku pri zahtevu za čitanje
+(koliko operacija izvršiti da bi se došlo do podatka, koliko nedeljvih operaija ćemo izvršiti da bismo došli do podatka)
+*amplifikacija pisanja - broj bajtova koji su stvarno upisani na disk kada je potrebno upisati jedan bajt podataka
+*amplifikacija prostora - uglavnom se odnosi na količinu isteklih podataka, starih verzija, izbrisanih verzija, koliko ćemo dodatno opteretiti naš disk čuvajući bespotrebne informacije
+-ove tri amplifikacije su nešto što ovi gore algoritmi pokušavaju da optimizuju
+
+-SIZE-TIERED KOMPAKCIJA - prednost - nizak je nivo amplifikacije pisanja, pogodan za sisteme koji zahtevaju dosta pisanja
+(često ima više sistema gde je neki dobar za pisanje, neki za čitanje, itd. pa onda se vrši prepakivanje podataka i radi se sa odgovarajućim sistemom za tu operaciju) - nemaju promene u realnom vremenu
+-nedostatak - velika amplifikacija prostora
+-kada se na nekom nivou nakupi n sstabela, spajamo ih da dobijemo nov nivo - spajanje na svakom nivou može izazvati spajanje na višim nivoima lančano (možemo reći koliko tabela spajamo na kom nivou)
+-ako spajanje na nivou proizvodi nove sstabele to može povući lančano spajanje na ostalim nivoima
+-amplifikacija čitanja je dosta visoka jer imamo dosta tabela na disku pre nego što ih možemo obrisati
+
+-LEVELED KOMPAKCIJA - uveo leveldb, prethodno je default za cassandru, ovde je situacija malo drugačija; kažemo da se lsm stabla sastoje od više nivoa
+-gde je naredni nivo T puta veći od prethodnog nivoa (T je obicno reda 10)
+-svaki (numerisani) nivo zove se run i sastoji se od više sstabela gde se naredni sast od 10x prethodnih tabela
+-kada veličina podataka svakog nivoa dostigne neku gornju granicu, ovaj nivo se spaja sa grsnom iz prethodnog nivoa, ovde imamo problem amplifikacije pisanja
+-ovde treba da pogledamo range odnosno opseg šta naša sstabela čuva i onda u narednom nivou gledamo u kojim sve tabelama se taj opseg nalazi
+
+-kompakcije imaju svoje mane, proces kompakcija je konstantan posao, to je pozadinski proces gde se nadgleda sadržaj i treba da se pripremi odgovarajući proces kompakcije kada se ispune određeni uslovi i ovaj proces je IZUZETNO ZAHTEVAN i može dodatno opteretiti sistem
+-opterećenje je i na procesne resurse ali i na sam disk i može se dodatno usporiti sistem (java garbage collector - kada se pokrene, naš program stane dok se to ne očisti i onda nastavljamo dalje)
+
+-ZAKLJUČAK, PREDNOSTI I MANE LSM STABALA
+-prednosti - imamo visok protok pisanja, konstantno pišemo u sistem
+-podaci u datoteci se mogu dodatno kompresovati i to moze rezultovati manjim datotekama segmenta loga
+-jako nezgodna mana - proces kompakcije ponekad ometa performanse tekućeg čitanja i pisanja sadržaja (može se zaustaviti ceo sistem)
+-druga nezgodna stvar - da svaki ključ može postojati na više mesta, a samim tim zauzima se dodatan prostor za podatke koji se ne koriste -to se zove amplifikacija (kad god dizajniramo ovakve sisteme, o amplifikacijama moramo dosta voditi računa)
+-treba voditi racuna kada pravimo aplikaciju ona zauzima određeno mesto i ima na raspolaganju npr. 100gb i sad problem je ako smo taj prostor popunili a radimo spajanje sstabela i treba da kreiramo novu sstabelu za koju nema mesta, pa ćemo posle osloboditi staru (to može stopirati ceo sistem ili jos gore dovesti do toga da se sistem sruši) --> to što je nezgodno ne znači da ove probleme treba izbeći maksimalno
+
+-lsm stabla i kompakcije su malo nezgodni
+-size-tiered kompakcija - lakša za implementaciju, kod leveled kompakcije moramo čitati indekse da vidimo šta sa čim treba spojiti
+
+-kod implementacije - najlakše da kod naziva fajla stavimo broj koji kaže koji je to nivo
+-kako to utiče na read path - mi u suštini treba da nađemo podatak, podatak može da se nalazi na nekom nižem nivou (ako se nalazi na nekom nižem nivou, nema potrebe da čitamo gore pošto je to najnovija stvar), ali ako se podatak ne nalazi na tom nižem nivou, onda moramo ići dokle god ne nađemo podatak (ako podatak nađemo na više nivoa ili vise fajlova, onda moramo videti koji je najnoviji pa njega vratiti)
+-prvi nivo će biti prazan, poluprazan ili popunjen to je skroz normalno da se desi

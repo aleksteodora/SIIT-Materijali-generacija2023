@@ -1,0 +1,113 @@
+NASP - Prezentacija 8 (3.12.2021.)
+
+
+-nastavljamo, povezujemo wal sa ostatkom sistema i povezujemo strukture sa početka, da vidimo što smo te neke stvari radili na početku, kako se strukture koje smo radili kombinuju
+-rad memorijske tabele, eksternalizaciju podešenja i put zapisa da bi podaci bili zapisani na disk (videćemo kako rade velike aplikacije sa big data)
+
+-wal - kada hoćemo da zapišemo podatak, memorijska struktura nije pouzdana stvar, ako ne perzistiramo negde, podaci će biti izgubljeni
+-wal je neka rezervna kopija na disku za tu neku memorijsku strukturu tako što vodi nekakvu evidenciju o svim operacijama koje su se desile u sistemu
+-ako se desi havarija u sistemu, sa diska možemo transformisati te operacije (naziva se i commit log), uglavnom je jedan zapis jedna transakcija
+-klijent šalje neku operaciju za neku aplikaciju, kada wal potvrdi tu operaciju, vršimo i zapisivanje u memorijsku strukturu --> gledamo kakva je ta memorijska struktura, koje su njene osobine
+
+-pr. pravimo sistem za skladištenje velike količine podataka, očekuje se brz zapis, odgovor, pretraga i čitanje (ako je moguće)
+-cela ideja iza memtable da podatke zapišemo i čitamo u memoriju (mnogo je brže nego na disku) - memorija je super, kul, svi vole memoriju
+-memorije nema beskonačno, ostavljamo za kasnije
+-memorija je aktivna dok je mašina aktivna, dok ima struje; kad se to promeni, više nemamo podatke ako ih prethodno nismo sačuvali na disk
+-treba nam snažna garancija trajnosti - zato koristimo wal (korisno kod problema gde ćemo više zapisivati nego čitati informacije)
+-zapisi se dešavanju brzo, odg klijentu može se dešavati takođe brzo
+
+-kako zapisujemo podatke -  zapišemo u wal (commit log) i kad on odgovori, zapisujemo podatke u memtable - wal daje trajnost podataka, memtable daje brzinu zapisa (saradnja ova dva je ključ uspeha)
+-memtable treba da ima definisanu strukturu da bismo mogli raditi efikasnije, možemo koristiti istu strukturu wal-a (ne treba nam crc i koliko je veliki ključ i podatak, u memoriji smo - možemo to lako da odradimo; najbitniji su nam ključ i vrednost - pr. koristimo hash mapu, tabelu)
+-nezgodno da koristimo hash tabelu ako imamo kompleksniju strukturu, tipa dvodimenzionalne stvari
+-treba nam relativno brzo dodavanje, brisanje, pretraga
+-za strukturu memtable možemo koristiti različite stvari i ne postoji jedno pravilo koje kaže šta treba da koristmo, zavisi od toga šta radi naš sistem, šta čuvamo, šta je domen problema
+
+-skip lista je jedna od korišćenjijih struktura za memtable, u RocksDB-u su se odlučili da koriste skip listu - ima dobre performanse, lako se paralelizuje
+-za naše potrebe nema bolje od skip liste, ugledamo se na ljude koji su to dobro smislili
+-memtable se implementira kao STRUKTURA FIKSNOG KAPACITETA (nećemo da preopteretimo sistem + memorije memamo beskonačno)
+-jedan segment wala ce biti iste veličine kao mamtable, onog trenutka kada se memtable popuni, popunili smo i wal segment i idemo dalje (memtable ima prag zapisa - trashold; kada ga prekoračimo, struktura iz memorije će se perzistirati na disk)
+-to je mesto kada pozivamo onaj algoritam koji će brisati segmente wal-a (imamo tačno momenat kada to radimo) - ta operacija se zove flush
+
+-ta strukt koja se perzistira na disk naziva se SSTABLE i ona je NEPROMENLJIVA struktura
+-trashold je varijabilnog karaktera - zavisi kakav sistem imamo, koliko imamo zapisa, kakvi su nam resursi
+-trebalo bi veličinu i granicu zapisa memtable nekako da podesimo (jako loše da vrednosti zakucavamo)
+-najbolje da korisnik shodno svojim potrebama, resursima, znanju, optimizaciji, podešava sistem kako mu odgovara, ali treba omogućiti i podrazumevane vrednosti za nove korisnike koji se tek upoznaju sa sistemom..
+
+-OD ČEGA ZAVISE PODRAZUMEVANE VREDNOSTI?
+*veličina raspoložive memorije, broj upisa koje očekujemo, veličina tih upisa.. znači zavisi ko koristi naš sistem i kakva je organizacija
+-može se podešavati sistem shodno vremenskom periodu (tokom praznika u prodavnici bude više zapisa npr. .. kad to prođe, verovatno će trebati manje memorije)
+
+-sistem koji razvijamo može imati NEKOLIKO AKTIVNIH INSTANCI MEMTABLA
+-to nije redak slučaj, onda možemo raditi rotiranje tih instanci u zavisnosti šta se desava i dokle je sistem stigao sa zapisima
+-kada se jedna instanca memtable-a popuni, nju treba serijalizovati na disk, onda ne možemo u nju ništa upisivati dok se ona skroz ne isprazni (na disk u sstable)
+-dok se ona prazni - da nemamo zarobljen sistem, zato imamo viće instanci memtable-a i rotiramo ih
+(možemo paralelno prihvatati nove zapise memtbala, a ovu prethodnu instancu prazniti.. i tako kad se jedna popuni, prethodna je prazna i možemo rotirati - može ih imati dve, može više, zavisi od sistema; dve su skroz u redu)
+-možemo ostaviti kao rešenje da korisnik bira ako mu treba više iz bilo kog razloga
+-druga aktivna prihvata zapise dok se prva zapisuje na disk
+(na početku će nam trebati malo više resursa dok se napravi više tih instanci, a kasnije će naš sistem biti sposobniji da prihvati nove zapise)
+-to je ono što se traži - ta konstantna dostupnost sistema
+-korisnici stalno žele da nećto kupuju, da nešto rade, mi kao inženjeri se moramo pobrinuti da to bude stalno ispoštovano) - iz tog razloga NEMOJ OPTIMIZOVATI STVARI PRE VREMENA
+-verovatno je bolje da instanciramo jedan memtable, pa ako on bude popunjen da instanciramo drugi, ali možda tada nemamo tu količinu resursa, možda tada to instanciranje traje dugo i korisnici neće moći da zapisuju odmah..
+-prvo napraviti sistem, pa onda da ga konfigirišemo u zavisnosti od toga šta se dešava sa našim sistemom u vremenu, onda da probamo da optimizujemo stvar
+-vrlo verovatno ćemo napraviti problem kada probamo unapred da optimizujemo stvari, i verovatno ćemo napraviti sistem koji neće moći da odgovori tim zahtevima
+
+-kako da omogućimo KORISNICIMA DA PODEŠAVAJU SISTEM?
+-izdvojiti naša podesenja u neki fajl
+-ne smatrati da su naši korisnici prepametni..
+(omogućiti da podešavanju shodno njihovom upoznavanju sa alatom, omogućiti default-ne vrednosti - time kažemo šta je minimum sa čim naš sistem radi)
+-podešavanja možemo omogućiti:
+*interno - kroz programski kod (često podrazumeva izmene koda.. da li imamo dozvolu, možda moramo imati neke spoljne elemente, nekakve alate..) --> interna konfiguracija dobra za podrazumevane vrednosti
+*eksterno - često zahteva restart sistema da bi izmene bile izvršene i prihvaćene
+
+-ako probamo eksternu konfiguraciju našeg memtable-a, gde pišemo tu konfinguraciju i u kom formatu?
+-konfiguracioni elementi obično se nalaze na istom mestu kao i kompajlirani element koji se pokreće (standardno):
+*prednost - sve na jednom mestu, ne opterećujemo previše os
+*nezgodno - moramo otvoriti fajl, šta ako je veliki i ima nezgodnu strukturu, onda radimo parsiranje..
+-ili podešavamo neke varijable koje naš program može iscupati iz os i uraditi neke stvari
+-različiti formati za sve ovo, yaml standardni format za te konfiguracije
+-kroz jedan konfiguracioni fajl možemo podešavati više delova, više elemenata u našem sistemu
+-nekada se desi da fale vrednosti, moramo obezbediti podrazumevane da bi naš sistem mogao da funkcioniše
+1. možemo mi obezbediti fajl sa default vrednostima, isto fajl za konfiguraciju samo popunjen podrazumevanim vrednostima
+2. ako taj fajl ne postoji, da obezbediml da postoje default vrednisti koje program može da iskoristi
+(manje zahtevni korisnici će biti zahvalni jer nemaju šta da podešavaju, ali biće zahvani i napredni korisnici jer smo im dali konfigiguracioni fajl koji mogu optimizovati šta im treba)
+~nije obavezno, ali je lepa praksa i obezbeđuje da se sistem ne skrši ako neko nije obezbedio te fajlove
+-samo treba da izbegavamo da se naši fajlovi nalaze na nekim egzotičnim destinacijama..
+(nekad ne možemo pristupiti putanji jer se nešto ne nalazi u istom fajl sistemu, istoj mašini..)
+
+WRITE PATH - kako funkcioniše putanja zapisa?
+-memtable je fensi naziv za neku strukturu u memoriji koja se popunjava podacima, kad se memtable popuni, podaci se čuvaju na disk u sstable
+-memtable je PROMENLJIVA STRUKTURA možemo raditi brisanje, izmene
+-sstable je NEPROMENLJIVA STRUKTURA, kao i wal (ako smo nešto promenili, obrisali, to rezultuje novim zapisom u fajl)
+-da bismo obezbedili trajnost podataka memtable imamo wal koji je nepromenljiv i štiti sstable
+-sstable su podaci perzistirani na disk
+
+-u kom odnosu su wal, memtable i sstable?
+-zavise jedna od druge i dopunjuju se, imaju malo isprepletanu strukturu
+-SLIKA kaže: kada hoćemo da zapišemo podatke, oni prvo idu u wal (zaštita), kad wal prihvati zapise, onda puštamo zapise u memtable i taj proces se odvija dokle god imamo mesta u memtable
+-onog momenta kad se memtable popuni, dešava se proces koji se zove FLUSH i zapisujemo podatke na disk formirajući nešto što zovemo sstable
+-voditi računa gde se koji element nalazi (jedino je memtable u memoriji), na disku je commit log i sstable
+-zapisi idu prvo u wal (na disk), pa onda u memtable, kad se memtable popuni, flush-ujemo to na disk formirajući sstable koji se vrlo verovatno sastoji od dve strukture (prva je indeks, druga su neki podaci - da bi nam bilo jednostavnije da pretražujemo)
+
+-ideja write path - svaki element ima samo jednu ulogu i mi ih nekako kombinujemo, povezujemo, kako bismo rešili neku jako kompleksnu stvar
+-ta ideja gde imamo male podsisteme koji se komponuju i rešavaju neki jako komplikovan problem je preuzeto od jako davne UNIX-OVE FILOZOFIJE ("do one thing and do it well")
+-komplikovan problem dekomponovanjem će biti znatno jednostavniji
+
+-100. put: korisnik šalje zahtev za neku CRUD operaciju, ona se zapisuje u wal, kad wal potvdi zapis, vrši se upis u memtable i tako sve dok memtable ima mesta
+-memtable sortira te parove ključ vrednost po ključu i zapisuje ih na disk formirajući sstable
+-možemo isprazniti, uništiti ili napraviti nov memtable ili napraviti dve ili tri instance memtable i rotirati ih (kako odlučimo možemo poboljšati algoritam)
+
+-STA JE SSTABLE? - SAFE MEMTABLE
+-kako memtable izgleda, koju strukturu ima; sstable replicira istu tu strukturu, samo na disk da bi bilo sigurno
+-sstable se sastoji od nekoliko elemenata i sve te elemente je potrebno formirati da bismo mogli nešto da uradimo
+-uopšteno se sastoji od dva dela:
+*data deo - tu su naši podaci
+*indeks - cela ideja da možemo da se pozicioniramo na neki segment i izvučemo deo koji nam treba (to radimo jer NEĆEMO UČITAVATI CEO SSTABLE U MEMORIJU --> to je cela ideja sstable)
+-indeks kaže na kojoj poziciji u fajlu se nalazi naš ključ (seek)
+-ako u indeksu luvamo ključ i offset gde se taj ključ nalazi u fajlu, nemamo potrebe da učitavamo sstable u memoriju, već se tom seek operacijom možemo pozicionirati tačno na taj deo fajla i onda pročitati i vratiti korisniku samo ono što mu treba
+
+-sstable NIKAD NEĆE BITI UČITAN U MEMORIJU
+(zato imamo indeks - da možemo omogućiti lakše pozicioniranje na određeni deo i izvući elemente koji trebaju da bismo vratili korisniku)
+-indeks i data deo su ključni kako da brzo radimo čitanje na disku
+-->sstable ima sve osobine one strukture zasnovane na logu, to kaže da je naš sken sistema uzasno loš (nesto da probamo, pa ne nađemo traje jako dugo)
+-može biti jako puno ovih sstable-a (rekli smo da je memtable ograničen - rezultuje velikim brojem sstable-a)
+-svi elementi se formiraju kada se formira sstable 

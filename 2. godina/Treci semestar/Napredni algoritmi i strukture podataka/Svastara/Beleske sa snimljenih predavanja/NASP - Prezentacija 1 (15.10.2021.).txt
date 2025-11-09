@@ -1,0 +1,25 @@
+NASP - Prezentacija 1 (15.10.2021.)
+
+
+-probabilističke strukture (vs determinističke strukture)
+ *manje memorije
+ *konstantno vreme upita za proizvoljan skup podataka
+ *obično rade spajanje, ukrštanje, lako se mogu paralelizovati
+-Bloom filter, Count-min Sketch, Skip list, HyperLogLog..
+-hash funkcije - jednosmerne, za ulaze različite dužine daju izlaze jednake dužine
+
+-bloom filter - brzo i efikasno određuje da li je neki element u skupu
+-fiksna količina memorije koju zauzima - 1% false positive, 9,6 bita po elementu
+(niži false positive - veća struktura)
+-ne podržava brisanje i broj pojavljivanja
+-kako da zauzmemo fiksnu veličinu memorije - objasni rad bloom filtera
+-niz veličine m, k hash funkcija
+-skalabilan i counting bloom filter
+
+-ako nam treba da je element sigurno u skupu dalje koristimo neko drugo ispitivanje, ovo je samo filter
+(ne koristi se npr. za studente ili tako nešto, već yt, gmail,..)
+-brza provera da li je podatak na nekom čvoru
+-counting - omogućava brisanje (broji broj povećavanja - koliko puta smo povećali sa 0 na 1)
+-prenos preko mreže ograničene količine informacija, umesto da razmenjuju ogromne liste podataka, čvor napravi bloom filter,..
+-primena: detekcija slabih lozinki, detekcija zlonamernih URL-ova 
+-konstantno vreme pretrage O(k), k - broj hash funkcija

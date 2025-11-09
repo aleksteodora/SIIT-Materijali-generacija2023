@@ -1,0 +1,48 @@
+NASP - Prezentacija 2 (22.10.2021.)
+
+
+-streaming podataka - neprekidni tokovi podataka koji se konstantno generišu (društvene mreže)
+-da uhvatimo podatke dok se oni dešavaju
+-treba da reagujemo na podatke kako oni dolaze (čuvanje, zagađenje - da se upali lampica,.. zavisi šta su podaci)
+-moramo nešto sa podacima kontinuirano raditi
+
+pr. brojimo hashtag-ove, gledamo šta je popularno (uslov laka paralelizacija - na više kompjutera da izvršavamo, malo prostora, ne mora 100% preciznost)
+pr. evidencija pregleda na yt
+
+-count-min sketch - tabele učestalosti događaja u sreaming-u podataka (nećemo lako izgubiti info, ali možemo malo preterati)
+k - hash funkcija
+m - dužina jednog niza
+-preciznost zavisi koliko redova dodamo - kao kod bloom filtera, tražimo balans između toga
+-fiksna veličina - kada se napravi, ne raste
+-ključ propuštamo kroz iste hash funkcije da dobijemo redove koje hoćemo da gledamo i na preseku redova i kolona izvučemo gde su hash funkcije i nađemo minimum niza - on kaže kolika je učestalost ključa
+-i-ta hash funkcija gleda i-ti red (prva hash funkcija da 7 - onda u 7. redu povećavamo vrednost za 1)
+-biramo preciznost i sigurnost i tako onda odredimo k i m
+-count-min - neki ključ mapira na frekvenciju
+
+
+-hyperloglog - različit broj posetilaca fb u nedelji, može se jedna osoba prijaviti više puta (vel skup podataka + duplikati)
+-pr. broj različitih stvari koje su ljudi pretražili za jedan dan
+-za računanje kardinaliteta jako velikih skupova podataka
+-za razliku od bloom filtera i count-min sketcha - ne čuva hash-eve, fiksna je struktura - 1,5kb memorije za 2% greške
+-sve ove tri strukture mogu se koristiti na sistemima sa ograničenim resursima
+
+-p - koliko vodećih bitova koristimo za baket, kaze kolika je preciznost (veće p - više memorije) 4, 16
+-m - veličina seta 2^p
+-loglog, super loglog, hyper loglog
+-težak je dokaz i matematiča podloga cele priče 
+-Ri broj nula od krajnjeg levog bita, računa neku harmonijsku sredinu
+-ako gledamo npr. posete za svaki dan, trebao bi nam svaki dan nov hyperloglog
+-rade neke procene, znaju kolika je učestalost podataka u kom periodu
+-ovde gledamo KARDINALITET, to i frekvencija nije isto (koliko je različitih ljudi bilo i koliko se nešto često pojavljuje - dva različita pitanja)
+
+-podaci idu i odlaze kao voda sa česme, možda nam treba samo privremeno neka informacija, statistika, a posle nam ne treba
+-želimo da smanjimo upise na disk, memoriju, što više možemo
+-ljudi su imali problem sa starim strukturama, pa su hteli nešto da reše na bolji način, sa manje memorije na uštrb preciznosti
+-cela ideja da su probabilističe strukture fiksne, fora kako da optimizujemo najgoru moguću opciju ako se ona desi
+
+-hash funkcija nam treba samo da bismo ključ prebacili u binaran oblik (zatim kaže ne čuvamo hash funkciju, treba nam broj, njega pretvorimo u binaran oblik i sa tim binarnim oblikom radimo)
+-ta procenjena vrednost je cena koju plaćamo za ove strukture, ne dobijamo tačnu vrednost
+-ključ može da bude bilo šta što smo pretraživali (kako se pravi neki kolač, koliko je visok Đoković, ulaz je proizvoljan)
+-hoćemo da pretabamo pravi podatak u neku binarnu vrednost jer da non stop pišemo prave podatke, naša struktura bi stalno rasla
+-POENTA - mi tranformišemo ulaz u nekakav oblik tako da ne sačuvamo konkretnu vrednost, ali da sačuvamo informaciju i na osnovu toga probamo da procenimo koliki je bio kardinalitet na osnovu toga što smo formirali
+-kardinalitet - vratiće broj različitih pretraga

@@ -1,0 +1,92 @@
+NASP - Prezentacija 6 (19.11.2021.)
+~imala sam i odgledan taj čas (beleške u svesci)~
+
+-nastavljamo wal, segmentiran log, brisanje delova log-a, šta radimo kada imamo više klijenata
+
+-wal je rezervna kopija na disku za određenu memorijsku strukturu (koju radimo za dve nedelje) tako što vodi evidenciju nad svim operacijama koje su se desile nad tom strukturom
+-wal isključivo koristi sekvencijalne operacije
+-jedino možemo dodavati podatke na kraj (brisanje i izmena će takođe rezultovati dodavanjem novih zapisa na kraj datoteke) - ne možemo uraditi inplace izmenu, odnosno promenu vrednosti na mestu na kom se ona nalazi
+-wal koristi određen zapis da vidi da li su zapisi unutar njega validni
+-koristi baferisani i/o da bi sprečio velike operacije na disku
+-alternativna opcija - sistemski pozivi, prepuštamo os jer on to radi najbolje, struktura memory mapped file i operacija mmap (ne radimo mi ništa sa i/o operacijama, nego prepuštamo da os to uradi jako brzo)
+-čuvamo informacije o transakcijama, TRANSAKCIJE se moraju U POTPUNOSTI IZVRŠITI
+
+-klijent šalje operacije programu, prvo se radi append u wal da bismo imali trajnost podataka (informacije smo sačuvali na disk, sigurni smo)
+-kada wal potvrdi da smo sačuvali informaciju, tada možemo u memorijsku strukturu upisati informaciju koja nam treba
+-CRC (checksum), TIMESTAMP (kada smo upisali informaciju), TIMESTONE (da li je neki podatak obrisan ili ne), VELIČINA KLJUČA, VREDNOSTI (varijabilna), KLJUČ, VREDNOST
+-CRC kaze da li su naši podaci koji su zapisani u redu ili ne; treba da radimo proveru za svaki podatak!
+
+-problem kada wal kreće nekontrolisano da RASTE, postaje težak za bilo kakvu obradu
+(problem je - wal kreće da raste, taj fajl na disku kreće da raste)
+-nekako delimo tu fajlčinu na neke manje fajlove, verovatno nam neki fajlovi neće ni trebati
+-kako delimo, segmentiramo, taj wal?
+-rešenje - da brišemo starije informacije
+-mogućnost da sasečemo fajl po nekim elementima jer znamo da se starije informacije nalaze na kraju
+-moze biti teže implementirati, može dovesti do toga da se zaustavi sistem
+-druga varijanta - da nekako podelimo wal na segmente i za svaki segment možemo specifirati veličinu, dat mogu se skladištiti na disk, u memoriju mozemo čuvati samo zadnji segment (problem delimo na manje probleme)
+-RocksDB koji ima svoj specijalan format deli wal na SEGMENTE ISTE VELIČINE (to rade da bi mogli replicirati info)
+
+-GDE DA ČUVAMO TE PODELJENE SEGMENTE WAL-A?
+*možemo čuvati na različitim mesta na disku (odustajemo od toga)
+*druga opcija - na jednom mestu; bolje jer znamo gde se svi segmenti nalaze - wal zna gde se nalaze, odakle gleda info
+-taj direktorijum se zove WAL
+-kad se wal pokrene, treba da skenira taj direktorijum i da pokupi lokacije segmenata, šta tu tačno ima, sa čime raspolaže
+-segmenti neće biti učitani u memoriju, učitaćemo samo poslednji segment - mnogo brži pristup, dolazi sa pretpostavkom da to što korisnik traži je vrlo verovatno skoro zabeleženo
+-ako sve treba da preskeniramo i učitamo poslednji, šta mi zapravo učitavamo u memoriju, šta nam od informacija treba od tih segmenata
+-pokupićemo lokacije segmenata i videti kako su oni organizovani, pokupićemo timestamp (odakle treba da počnemo skeniranje)
+-jako je nezgodno učitavanje wal-a, treba da znamo ko ide pre koga, zato nam treba redosled segmenata
+
+-kako da jedinstveno obeležimo segmente da znamo ko ide pre koga? - gledamo najjednostavniju opciju za implementiranje i održavanje
+-treba da obezbedimo jednostavno mapiranje offset-a
+-svakom segmentu damo neki prefiks npr. wal i redni broj segmenta
+-mana - da neko promeni naziv fajla wal1 u wal14 npr.
+-treba da nađemo segment po identifikatoru
+-kad nađemo offset (redni broj) koji nam treba, učitamo taj fajl i radimo dalje šta nam treba
+-te skokove šta želimo da učitamo - da smanjimo što više; ideja da dobijemo informaciju što pre i potrošimo što manje resursa
+-dodatna strategija - poslednjem segmentu dodajemo identifikator END i START za prvi segment
+
+-veličinu segmenta definišemo kako nama odgovara - KAKO ONDA DA URADIMO SEGMENTIRANJE (po kom kriterijumu)?
+-prvo - SVI SEGMENTI SU ISTE VELIČINE; kod RocksDB-a gde su fiksni segmenti, moramo voditi računa da ako korisnik unese nesto što prevazilazi granicu segmenta posle lepo pročitamo taj podatak, faktički moramo učitati dva segmenta
+-možemo koristiti po vremenskog odrednici..
+
+-segmentaciju radimo U ZAVISNOSTI OD TOGA ŠTA NAŠ WAL ČUVA
+-u zavisnosti od toga šta naš sistem treba da radi, može se razlikovati od aplikacija i od toga šta čuvamo..
+-možemo i po transakcijama
+-ODABRATI NAJPRIRODNIJU OPCIJU ZA TIP PROBLEMA KOJI REŠAVAMO ("kad smo u dilemi da konsultujemo domen problema!!!")
+-ako definišemo segmente različite veličine - po vremenu, transakciji, korisniku - jednostavnije za implementaciju, ali optimizacija sistema koji rade sa wal-om može biti teža (ne znamo koliki će biti segmenti unapred)
+-npr. imamo datoteku za svaku transakciju - ako imamo malo elemenata (opet je problem, česta komunikacija sa diskom je sad)
+
+-KAKO BRIŠEMO INFORMACIJE KOJE NAM VIŠE NISU POTREBNE, datoteke koje nisu potrebne?
+-često problem ne skontamo odmah, ni prilikom testiranja, nego tek kada pustimo u upotrebu (uopšteno)
+-ovi segmenti sa početka su najstariji, sa kraja najnoviji - ti sa kraja nam verovatno više neće trebati
+-odredimo neku granicu LOW WATER MARK kada ćemo ih brisati (korisno što smo odredili da čuvamo sve na jednom mestu) - šta je sigurno obrisati
+-adaptivni algoritmi - npr. za praznike imamo više pisanja u bazu, posle smanjimo taj indeks (super rešenje)
+-najjednostavnije zakucamo taj indeks za neku fiksnu veličinu, posle određenog vremena taj indeks se pometri, tako redom
+-uglavnom je sigurno obrisati sve osim poslednjeg segmenta (paziti ako nismo sačuvali sve bitne info..)
+
+-mehanizam brisanja pokreće se kao zasebna nit - jedina uloga da briše te segmente (treba nešto što neće zaustaviti rad wal-a, ali će obrisati ove segmente)
+-dovodi do račvanja našeg programa:
+*upisivanje informacije u fajl, vođenje evidencije o fajlovima (standardan wal)
+*drugi proces se na određeno vreme pali, briše segmente i tako radi
+
+-do sada smo koristili i posmatrali wal da ima samo jednog klijenta
+-sistemi zasnovani na log strukturi u zadnje vreme su popularni jer se jako lepo nose sa činjenicom da možemo imati mnogo veliku količinu podataka i da nam je sistem skoro konstantno dostupan
+-ako imamo pristup više klijenata - mogu naši podaci postati nekonzistentni
+
+-KAKO OBEZBEDITI DA PODACI OSTANU KONZISTENTNI, da ako imamo više korisnika svi ispravno pročitaju i upišu informacije?
+(kako se u banci opsluzuju klijenti ako ih ima više --> stanu u red)
+-napravimo RED ČEKANJA I U NJEGA DODAJEMO POSLOVE (naziva se još i serijalizacija posla)
+
+-sada treba voditi racuna o trajnosti podataka
+-da li informacije iz tog reda čekanja treba da perzistiramo na disk?
+-voditi računa ako uvedemo novu strukturu u sistem, da li i ta struktira može zapasti u probleme zbog pada mašine, nestanka struje, reseta i slično
+-ZAVISI OD TIPA APLIKACIJE I OKRUŽENJA U KOM SE ONA IZVRŠAVA
+-ako je to veliki sistem u cloud-u koji može da crkne verovatno, a ako je to na našem kompjuteru, manja je verovatnoća, pa možda i ne moramo
+-ovime smo završili sve informacije za wal, sledeći put radimo merkle stabla, kako da povezemo ovu priču sa trajnosti i sigurnosti sa probabilističkim strukturama da imamo malo zaokruženiju celinu..
+
+-brisanje segmenata je privremena vatrijanta, znači od trenutka kada memorijska struktura perzistira svoje informacije na disk, tada smo sigurni da možemo obrisati informacije iz wal-a (tada imamo sigurnu trajnost podataka)
+
+-write path - u NoSQL bazama funkcioniše ovako:
+-kada wal potvrdi da je zapisao informaciju, to zapisujemo u memtable i kad se on popuni, sve informacije iz memtable se spucaju na disk i pravi se struktura sstable, kad se on obriše, šalje se signal wal-u da se on obriše.. (malo je prekidao)
+-znači, imamo wal, memtable, wal, memtable.. i kad se memtable napuni određenim brojem zapisa, sve to se serijalizuje na disk i pravi se sstable i tako idemo do beskonačnosti
+-kao što imamo write path, tako imamo i read path i onda i tu moramo obezbediti još neke strukture.. 

@@ -1,0 +1,104 @@
+NASP - Prezentacija 5 (12.11.2021.)
+
+
+-nastavak wal-a, memory mapped file i transakcije
+-biće dosta pitanja za nas
+
+-wal je rezervna kopija na disku za memorijsku strukturu, vodi evidenciju o svim operacijama koje su se desile nad tom memorijskom strukturom
+-memorijska struktura se skroz more oporaviti ponavljanjem operacija iz wal-a
+-zasniva se na strukturama zasnovanim na log-u, podaci se sekvencijalno upisuju u fajl
+-NIJE MOGUĆA INPLACE IZMENA, sve što možemo jeste UPISATI PODATKE NA KRAJ (nije moguća izmena ili brisanje)
+-mozemo čitati podatke od početka ili od nekog dela do kraja
+-podaci se čuvaju u memorijskoj strukturi, ali prvo u wal da bismo mogli da rekonstruišemo
+-kad klijent pošalje neki zahtev sistemu, prvo se operacija zabeleži u wal, pa onda možemo raditi sa memorijskom strukturom
+
+-struktura - radimo malo uprošćeniju verziju RocksDB-a
+-možemo videti da je to neka binarna datoteka gde su podaci upisani u nekom specifičnom formatu, svaki element ima određenu veličinu bajta koliko zauzima
+-zašto podatke pišemo u binarnom obliku --> ako znamo da će wal stalno da narasta, pokušavamo da uštedimo prostor i da ga što više optimizujemo
+-moramo znati tačno strukturu unapred kako bismo ispravno pročitali šta se tu nalazi (da ne probijemo segment i ne pročitamo nešto što nije naše)
+-wal SAV SVOJ SADRŽAJ ZAPISUJE NA DISK
+
+-može se desiti da dođe do oštećenja zahteva, treba biti svesan toga, kako da realizujemo to?
+-predlozi hash, checksum
+-postoji tri načina da se ovo reši, sve ima pluseve i minuse, treba da balansiramo
+-da nekako jednoznačno označimo sadržaj zapisa u wal! --> za to možemo koristiti checksum
+(proveriti jedinstvenost zapisa na promene prilikom čitanja pod)
+-neki podatak kad hoćemo da upišemo u wal propustimo kroz hash funkciju i onda taj checksum, tu specifičnu vrednost upišemo pored podatka
+-kasnije radimo suprotno, prop, vidimo je l isti taj checksum i znamo da li je taj zapis validan ili ne
+-postupak se ponavlja za svaki zapis unutar wal-a
+
+**wal koristi CRC zapis (jednostavna varijanta checksum-a) - propustimo vrednost kroz neku hash funkciju i ona vrati neku 32-bitnu vrednost koju zapišemo na početak
+-ako uzmemo da pročitamo taj naš format na početku, imamo taj kontrolni zbir koji zauzima (4B)
+**nakon toga imamo TIMESTAMP (16B) - kada smo upisali tu vrednost
+**(1B) za TOMBSTONE koji kaže da li je to obrisano ili ne
+**zatim imamo VELIČINU KLJUČA i VELIČINU VREDNOSTI
+-koristimo jer ne želimo da ograničimo korisnika, može da bude bilo koja vrednost, time smo se obezbedili da nismo zakucali konstantnu vrednost
+**nakon toga imamo KLJUČ i VREDNOST
+-ako smo videli da prilikom čitanja nije isti CRC, imamo različite strategije - da nekom javimo, negde zabeležimo, da obrišemo taj zapis ili probamo da ga rekonstruišemo.. zavisi kakav sistem pravimo
+-podatke promenljive dužine možemo upisati u nešto što je fiksne dužine, CRC je kao neki signal da kaže da li je do promene došlo (da li je zapis validan)
+
+-zašto CRC ide na početak?
+-to je prva stvar koju treba da proverimo - ako je on okej nastavljamo sa tim podatkom, ako nije odbacujemo
+-ovo je JEDAN OD ODGOVORA ZAŠTO KORISTIMO BINARAN ZAPIS
+-->ako imamo binaran fajl sa segmentiranim elem, ne moramo pročitati celokupan zapis, a kad to radimo sa serijalizacijom u neku strukturu obično moramo pročitati sve podatke
+-kod binarnog fajla ne moramo čitati celokupan red koji može biti veliki, mozemo pročitati deo, pa skočiti i pročitati druga 4B npr. i tako redom
+-sa druge strane, nemamo puno operacija koje treba da uradimo
+-mana: teže radimo sa binarnim fajlovima, ali ako imamo unapred poznatu strukturu i znamo sa čim radimo, nije tesko
+
+-zapis svakog elementa na disk ODMAH daje snažnu garanciju TRAJNOSTI, ali to ograničava performanse i može postati USKO GRLO SISTEMA
+-fb, instagram - imamo previše zahteva u jedinici vremena (sekundi)
+-ne treba da budemo lenji i rešavamo problem time što možemo kupiti nešto (memoriju, disk, ssd..) - jednog trenutka fizika neće dozvoliti jednostavno da se još nečega ispod doda
+(prvo razmisliti o problemu..)
+
+-ako sve direkno spucamo na disk imamo ozbiljna ograničenja performansi, ali ako je zapis odložen ili se vrši ASIHRONO (u smislu da neki drugi program radi taj zapis na disk) to ZNATNO POBOLJSAVA PERFORMANSE
+-ali povećava mogućnost da se ti podaci zgaze (bafer)
+
+-međurešenje, ideja - punimo bafer i onda podatke pišemo na disk
+-jedan mehanizam - memorijski mapiran fajl - on nam omogućava da pristupamo datoteci kao da je ona učitana u memoriju; jako dobra stvar i jednostavno radi (često ga koriste svi dizajneri baza podataka ili ozbiljnih aplikacija koje barataju sa ogromnom količinom podataka ~ misli isključivo van Novog Sada)
+-MEMORY MAPPED FILE - pokušava da odgovori na PITANJE kako postupati sa podacima na disku koji su veći od raspoložive memorije? -->VAŽNO
+-imamo ogroman fajl na disku, ne možemo sve učitati u memoriju, kako to da rešimo (a da imamo utisak kao da smo sve učitali u memoriju)
+-pokušavamo da "ubrzamo" disk ako stvari radimo malo pametnije (ideja virtuelne memorije nastala 1960ih) - memorija daje iluziju pokrenutom programu kao da ima dovoljno memorije, a nema
+
+-kada program pristupa memoriji, on zapravo pristupa virtuelnoj memoriji - os odvaja poseban deo sekundarnog skladišta (hard disk) kao viruelnu memoriju --> os će prebacivati iz memorije na disk, iz diska u memoriju kako budemo pristupali nekom delu fajla - ta operacija se zove swap
+-to PREBACIVANJE os radi JAKO BRZO, na nama je da to nekako iskoristimo (otvaranje aplikacija koje nismo odavno koristili..)
+-UNIX os imaju sistemski poziv mmap - jako koristan alat za rad sa u/i operacijama
+-mmap je sistemski poziv - svu sihronizaciju šta ide iz memorije na disk, iz diska u radnu memoriju, svu tu sihronizaciju radi os za nas (sve oko tog swappinga radi os)
+-mmap pokušava da stvori dodatan bafer za čuvanje kopija pre nego što skladištimo na disk
+
+KAKO RADI?
+-za programera, čitanje iz datoteke koristeći mmap izgleda normalno, dobijamo niz bajtova u koji upisujemo, čitamo informacije
+-kako nešto novo upišemo u niz bajtova, os će to detektovati i uraditi SWAP i spucati na disk
+-ako hoćemo nešto da pročitamo iz tog niza bajtova:
+*ako se nalazi u memoriji - pročitaće iz memorije
+*ako se nalazi na disku - biće jako brz da to učita u memoriju i stalno radi kroz taj swap
+
+-mmap ima svoje nedostatke i takođe ih treba biti svestan - kernel mora više da radi da hendla taj swap memorije i diska (danas to ne igra tako bitnu ulogu, ali treba biti svestan da to može biti problem)
+-ograničena veličina mmap datoteke koji možemo smestiti može biti problem, za današnje os to nije toliko ograničenje
+
+-TRANSAKCIJE - samo ukratko
+-bitno je kada hoćemo da ograničimo gde su granice naših zapisa kad vršimo upisivanje u wal
+-simbolizuje jedinicu rada koja se obavlja u okviru sistema za upravljanje bazom podataka ili nekog sličnog sistema
+-koristi se puno zbog osobina
+*nezavisne su
+*ne mogu se izvršiti polovično - ne možemo polovično prebaciti novac, iscrtati interfejs, prikazati animaciju.. (transakcija odnosno jedinica operacije MORA SE IZVRŠITI U CELOSTI)
+-ako se ne može izvršiti u celosti, celokupna transakcija se odbacuje (to je sve što nama treba iz ovog predmeta)
+
+-kako to povezujemo sa wal-om?
+-kada prebacujemo neki skup informacija u wal bitno je da znamo da li su one povezane ili ne (možda neko kupuje više različitih stvari, pa treba da znamo koliko para da skinemo sa računa)
+-ako su operacije povezane - moramo ih tretirati zajedno (primer kupovina - kupio neko 4 stvari, poslali 3..) - može da skine pare za sve što smo kupili ili da obaci transakciju i kaže probaj ponovo
+
+-ako ne bismo popunili informacije iz wal-a ispravno, imali bismo jako veliki problem - NEKONZISTENCIJU
+-kupili smo nešto, dali pare, server se srušio i kad se server vrati - nešto smo platili, nešto nismo, a pare su izgubljene u nekom međuprostoru i to ne želimo
+-KAKO SMO ZAPISALI INFO TAKO MORAMO PROČITATI
+
+-kada zapisujemo informaciju u wal, moramo znati jesu li one povezane ili ne - kako to radimo?
+-ideja - jedan wal za povezane transakcije npr. (pričaćemo sledeći put)
+-ideja kao TCP - da vidimo koliko stvari je povezano, pa čekamo sve da nam dođu
+-ili da svaki deo transakcije ima neki ključ, pa po njemu gledamo
+
+--> ovo do sad su predlozi, ideja je skup ovih predloga zapravo - jedna ideja da markiramo operacije koje idu zajedno
+-zapisi koji čine transakciju - možemo da počnemo specijalnim blokom START, završimo specijalnim blokom COMMIT
+-svakoj transakciji dodeljuje se jedinstveni identifikator
+-sve što se nalazi između start-a i commit-a i ima isti identifikator znači da pripada jednoj transakciji i kao takav blok mora biti upisan u wal!
+-sledeći put cemo videti da može vršiti nekakvu podelu da jedna transakcija zapravo bude jedan wal
+-i tako isto kada čitamo - idemo od start-a ka commit-u gledamo da ima isti identifikator i sve čitamo ako može ili odbacujemo

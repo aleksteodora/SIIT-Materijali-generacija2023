@@ -1,0 +1,50 @@
+NASP - Prezentacija 3 (29.10.2021.)
+
+
+-ovime završavamo probabilističke strukture
+-batch obrada - metod obrade kada imamo veliku količinu podataka ili podatke koji se ponavljaju
+-ti podaci koji treba da se obrade prvobitno su skladišteni negde
+-uglavnom noću ili kada su  ti serveri dostupni, kada ima manje interakcije sa korisnicima, pokrene se ta obrada koja traje dugo (npr. neki finansijski izveštaji i slično)
+-indeksiranje stranica interneta - da vidimo šta se poklapa sa onim sto korisnik traži, upoređivanje nekih genoma.. itd. treniranje sistema mašinskog učenja gde imamo veliki skup podataka
+-ideja - dobijemo informacije, čuvamo ih na disk, posle ih obrađujemo 
+-strim i batch su dva ekstrema, lambda arhitektura kombinuje da bolje obradi te informacije
+-mikro batch isto kombinuje ova dva, čuvamo podatke i obrađujemo kako oni dolaze, onda uveče opet pokrenemo neko procesuiranje (obrada u nekim grupama)
+-veliki sistemi grupišu podatke i šalju ih nekakvim strimovima..
+
+-pr. dodavanje, brisanje, brza pretraga, dosta podataka, čuvamo ih u memoriji..
+-skip lista nastala na ideji da postoji neka povezana lista (bolja opcija od stabala za same pretrage)
+-koristi verovatnoću da pravimo dodatne slojeve
+-ideja skip liste (u odnosu na dvostruko spregnutu) - da bude brza pretraga i da možemo skočiti na sredinu liste
+-ideja zasnovana na ideji sistema metroa (obican metro staje na sve stanice, ekspresni staje samo na neke stanice)
+-imamo nivoe, moguce je preskakanje čvorova
+-najniži nivo - klasik jednostostruko ili dvostruko spregnuta lista, pored toga sadrži i visinske pokazivače gde možemo da preskačemo nivoe
+
+-pretražujemo od najvišeg nivoa, spuštamo se
+-brisanje, vršimo preveživanje pokazivača na svim nivoima tako..
+-voditi računa da se može obrisati ceo nivo (ako ostane početak da pokazuje na kraj) tada brišemo ceo taj nivo
+-dodavanje (koliko još brzih stanica imamo), bacamo novčić da vidimo dokle dodajemo element
+
+-crawler mehanizam - ide po netu i skida stranice i indeksira ih nekako, da može da ih pronađe po nekom kriterijumu kad mi ukucamo search
+-pr. TREBA DA NAĐEMO SLIČNE STRANICE koliko su stranice slične (treba laka paralelizacija, što manje resursa)
+-neka batch obrada, čuvamo info na disk, pa pustimo neki algoritam da vidimo koliko su one slične
+-pr.2 da ustanovimo sličnosti nad dva skupa gena (+lak algoritam za razumevanje, jednostavan)
+-SIMHASH tehnika za brzu procenu koliko su dva skupa podataka slična
+-računanje odnosno konverzija podataka u hash vrednost i prebacivanje u binaran oblik i onda računanje hemingovog rastojanja
+-hemingovo rastojanje - metrika koja se koristi za pronalaženje različitosti između dva skupa podataka
+-poredbeni elememnti treba da budu u binarnom obliku, radimo ekskluzivno ili nad tim skupovima i na kraju računamo ukupan broj jedinica
+-FINGERPRINT je hash vrednost nekih karakteristika (ako imamo dokument - to je naslov, ključne reči, tagovi)
+-sličniji su skupovi što je hemingovo rastojanje manje
+-efikasan u pogledu zauzeća prostora
+-uradili inženjeri iz google-a da reše problem indeksiranja stranica
+
+-kako ide algoritam simhash-a:
+ *delimo tekst i uklanjamo zaustavne reči
+ *dobijenim vrednostima dajemo težine (najjednostavnije frekvencija slova u okviru reči)
+ *svaki element propustimo kroz hash (svi elementi su iste dužine) i odredimo binarnu vrednost
+ *(konverzija 0 u -1) i formiramo tabelu, sve vrednosti stavimo jedne ispod drugih i sumiramo kolone (množimo težine sa vrednostima)
+*opet sumiranje elemenata - veći od 0 je 1, manji od nule je 0 ---> dob jedinstveni identifikator našeg seta
+*na kraju radimo xor nad drugim setom i dobijamo hemingovu udaljenost tjt
+-paralelizam lak, svaka grupa elemenata može na jednom kompjuteru
+-koliko je algoritam precizan zavisi od hash funkcije, kao kod svih prethodnih algoritama (oni koriste 128 za stranice - google)
+-možemo kontrolisati zauzeće memorije i preciznost
+(binaran broj pretvorimo u decimalan broj i on kaže koliko su slični ili različiti)

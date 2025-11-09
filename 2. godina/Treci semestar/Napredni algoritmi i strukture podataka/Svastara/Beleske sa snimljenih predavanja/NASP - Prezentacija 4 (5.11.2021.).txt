@@ -1,0 +1,57 @@
+NASP - Prezentacija 4 (5.11.2021.)
+
+
+-prošli put smo završili sa probabilističkim strukturama
+-kako da reagujemo na otkaz sistema i kako radimo oporavak sistema
+-write ahead log ili dnevnik - način kako da to rešimo
+
+-mreža u računarskim sistemima je jako nepouzdana (dešava se dosta razloga da informacije ne prolaze)
+-čvorovi (računari) mogu takođe otkazati iz raznih razloga, njihovi diskovi ne moraju nuzno otkazati!!
+-to možemo iskoristiti da povratimo prethodno stanje sistema (hoćemo nakon otkaza sistema da popunimo neke memorijske strukture prethodnim stanjem da ne bismo izgubili informacije koje su se nalazile u memoriji)
+
+-pr. skladištenje informacija kod veterinara - u nekim fiokama, ormarima, po nekom kriterijumu (noge, ruke, glava, krila..), koliko je jednostavno naći te informacije kad životinja dođe?
+-šta ako su svi podaci u jednoj datoteci
+---> to je razlika nasumičnog i sekvencijalnog pristupa
+-nasumično - manje efikasno, prolazimo kroz glave, kroz noge.. pa tražimo, spajamo ih
+-što su informacije jedna pored druge, bliže, lakše ih je pročitati u jednom koraku
+
+STRUKTURE ZASNOVANE NA LOGU, DNEVNIKU
+-------------------------------------------------
+-append only - možemo dodavati informacije samo na kraj, često se koristi u bazama podataka, izbegavamo nasumična čitanja, već čitamo odjednom što više podataka možemo
+-zapisi u log-u su nepromenljivi, dodaju se samo sekvencijalno
+-efikasan i na standardnim i na ssd-ovima (klasični diskovi su jeftiniji od ssd-ova)
+-!!!CLOUD JE SISTEM JAKO JEFTINIH MAŠINA KOJE MOGU DA RADE ZAJEDNO - ako otkaže nema problema, biće sledeća koja može da pohvata te zahteve
+-čitanje i pisanje 0(1), pretraga 0(n), ali često ne idemo kroz celu strukturu nego se pozicioniramo na određen deo i pročitamo neki deo
+
+-strukture zasnovane na log-u:
+-pr. sistem za skladištenje - jaka GARANCIJA TRAJNOSTI podataka I AKO MAŠINA OTKAŽE (da se operacija obavezno izvrši i ako se nešto desi nekom čvoru)
+-kada mašina prihvati nešto - mi to zapisujemo u memoriju i wal
+-wal - rezervna kopija na disku za memorijsku strukturu
+-sve što se dešava u memoriji - nalazi se i u wal-u
+-jako bitno da se finansijske  i zdravstvene informacije ne izgube
+-kada struktura dostigne određeni kapacitet, tranformiše se u neku drugu strukturu na disku 
+-ta memorijska struktura i ta druga struktura na disku - ključni deo projekta (sve ove stvari se kombinuju i sve ima smisla)
+-BITNO - kada memorijska struktura crkne, imamo i neku strukturu na disku iz koje rekonstruišemo stanje
+-kada memorijska struktura dostigne određeni kapacitet, smeštamo to na disk i wal možemo da obrišemo
+-onda tako idemo u krug..
+
+-slika - klijent šalje neki zahtev nekoj bazi, programu, bilo čemu (nekom skladištu podataka) i onda se:
+PRVO se to append-uje u wal, upiše se na disk prvo
+ONDA nakon toga upisujemo u memoriju
+-ako bismo prvo upisali informaciju u memoriju, može se desiti da crkne
+-ako memorijska struktura crkne učitamo informaciju iz wala
+-kada popunimo memorijsku strukturu ne brišemo informacije iz log-a, informacije iz log-a brišemo tek onog momenta kada memorijska struktura završi nešto perzistentno na disku što nije wal
+
+--------------------------
+NAŠ PROJEKAT
+-kad šaljemo zahteve get, put, delete.. prvo moramo zahtev zapisati u wal (kažemo to je operacija koja želimo da se desi), a onda popunjavamo neku memorijsku strukturu i upisujemo tu operaciju u nju i to ponavljamo za sve zahteve; kada popunimo tu memorijsku strukturu, pišemo na disk i tada brišemo sve iz memorije, brišemo wal i formiramo novi..
+-kako da pročitamo te informacije iz memorije sa diska - koristimo bloom filter, pitamo da li se te informacije nalaze u fajlu
+*ako se možda nalazi, otvaramo fajl
+*ako se ne nalazi, preskačemo fajl.. i skraćujemo vreme pretrage
+--------------------------
+
+-wal ima tendenciju da jako brzo naraste
+-koristi sekvencijalni i/o struktura zasnovana na log-u
+-treba da uzmemo što više dobrih osobina, a da smanjujemo nove
+-dodavanje na kraj brzo povećava wal
+-kroz wal ima

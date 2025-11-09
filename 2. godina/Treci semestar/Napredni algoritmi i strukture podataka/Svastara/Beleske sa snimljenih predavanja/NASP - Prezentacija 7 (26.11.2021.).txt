@@ -1,0 +1,101 @@
+NASP - Prezentacija 7 (26.11.2021.)
+
+
+-završili smo priču za wal, radićemo danas stabla
+-merkle stabla, merkle dokaz, anti-entropy popravke, serijalizacije stabla
+
+-stabla su nekakvi čvorovi koji su povezani ivicama
+-apstraktni tip, koristimo da prikažemo neku hijerarhijsku strukturu u podacima
+-sadrži korenski element i podstabla dece sa roditeljskim čvorom
+-definiše se rekurzivno
+-čvor se definiše sa vrednošću i listom referenci na druge čvorove koji su povezani sa njim
+-svaki čvor ima najviše jednog roditelja i jedno ili više dece (0 dece - list)
+-čvor i njegovi potomci čine podstablo
+-najveća dubina stabla je visina stabla
+
+-n-arno stablo - nema spef koliko dece ima koji čvor (nisu najčešći izbor)
+-KAKO POREDIMO N-ARNA STABLA?
+-poredimo dubinu, broj listova, tip podataka koji se smešta, broj čvorova po nivou!..
+
+-češće se koriste binarna stabla - specijalizacija n-arnog stabla gde svaki element ima (najviše) dva deteta (levo i desno dete)
+-kako poredimo BINARNA stabla?
+-ovde znamo koliko je elemenata maksimalno na svakom nivou
+-balansirano binarno stablo - uravnoteženo po visini; visina levog i desnog podstabla bilo kog čvora razlikuje se najviše za 1 (korisna osobina)
+-kompletno binarno stablo - svaki nivo je u potpunosti popunjen čvorovima sem poslednjeg nivoa (nivoa listova) - zgodno kada serijalizujemo stablo u fajl
+-kada hoćemo da serijalizujemo stablo u fajl, gledamo da li je kompletno, još ako je binarno znamo kako da izvlačimo elemente iz tog fajla (u jednoj liniji mozemo serijalizovati strukturu koja je relativno kompleksna)
+
+-KAKO FORMIRAMO STABLO?
+-različite varijante u zavisnosti od toga šta treba da uradimo, možemo od vrha ka dnu ili od dna ka vrhu
+-KAKO OBILAZIMO STABLA?
+-pre (čvor pa decu) i post order obilazak (suprotno), za binarna ima i inorder obilazak (taj čvor između) ?
+
+-pr. provera integriteta podataka, da podaci nisu oštećeni prilikom upload-a (da ne trošimo mnogo resursa, možemo malo više koristiti procesor) - treba da nađemo u kom fajlu je greška, a da ne šaljemo sve kroz mrežu
+-ideja MERKLE (HASH) STABLA - svaki čvor je označen hash vrednošću, hash-iramo sve podatke i od toga izgradimo stablo
+-imamo na vrhu hash i relativno jednostavno možemo ustanoviti gde je do greške došlo
+-ne dobacujemo se fajlovima nego hash-evima, što je mnogoo manje
+
+-ova stabla su po svojo prirodi BINARNA i važi sve za binarno i bitno - stablo je KOMPLETNO
+-možemo jako malo mesta na disku zauzeti za serijalizaciju
+-formira se od dna ka vrhu, root hash nam treba za detekciju da li je došlo do nekakve greške
+-stablo uzima neki skup podataka na ulazu i kao povratnu vrednost vraća root hash
+-collision resistance hash funkcija - definišemo je tako što je teško pronaći dva ulaza koji hash-iraju isti izlaz
+-algoritam za formiranje merkle stabla - formiranje je relativno jednostavno, kreće od dna ka vrhu, kreće od konkretnih podataka - data block, nema potrebe da ih računamo u celo stablo (verovatno će te informacije biti na disku, nema potrebe da ih dupliramo)
+-prvi nivo, list, formiramo tako što podatke propustimo kroz neku hash funkciju, onda koristimo hash da spajamo dva susedna hash-a -ako nam nekada fali element - rešavamo tako što dodajemo praznu hash funkciju i onda imamo odgovarajući broj suseda
+-kada poslednja dva čvora propustimo kroz hash funkciju dobijamo root i njega možemo skladištiti na disku da proverimo jesu naši podaci koji su takođe na disku ispravni
+-kada hoćemo da proverimo da li su podaci identični na nasem kompjuteru i nekoj udaljenoj strani - onda jedan drugom pošalju samo root i uporede ih, ako su isti nije došlo do promene u podacima
+
+-čvorovi čuvaju samo hash-eve
+-svi čvorovi koji nisu na samom dnu i samom vrhu nazivaju se INTERNAL NODE - negde su između i možemo ih dalje koristiti za proveru gde je došlo do problema
+-merkle stablo se formira REKURZIVNO od dna ka vrhu
+-ovaj proces je **IZUZETNO PROCESNO ZAHTEVAN**!!!, NIKADA DA TO NE IZGUBIMO IZ VIDA - ako probamo da formiramo ovakvo kompleksno stablo u istoj niti odnosno u isto vreme kad naš program radi - znači da će naš program biti blokiran za bilo kakvu upotrebu dok se stablo formira, a trebaće vremena da se stablo formira (da budemo svesni resursa koje imamo dok se stablo formira, da ne bismo pojeli sve resurse)
+
+-ova stabla se dosta koriste za validaciju podataka na različitim mestima
+-svuda gde je potrebno raditi neku sihronizaciju tako da ne saljemo celokupne podatke kroz mrežu nego samo root
+-koriste se dosta kod blockchain tehnologija, ali nije smišljeno za tu tehnologiju..
+-blockchain je dosta procesno zahtevna tehnologija koja je upotrebljiva 0% (neke transakcije potroše struje koliko cela Austrija)
+-ova struktura da se formira troši jako puno resursa, da se validira troši jako malo resursa
+
+-ZAŠTO FORMIRAMO STABLO?
+-imamo binarnu pretragu, možemo izvući samo mali deo stabla i videti gde je došlo do problema za razliku od lanca gde bismo morali sve da hash-iramo da bismo stigli do kraja
+-potrošićemo dosta resursa za formiranje, malo za validaciju - odlučujemo da li ovako nešto koristimo na osnovu toga šta nam je tip aplikacije i koliko resursa imamo na raspolaganju (da li to naša infrastruktura može da izgura)
+-poređenje sa lancom.. ali kod lanaca moramo slati ceo skup podataka iako ima neke prednosti
+-nakon što preuzmemo neki podatak, tražimo mali deo ovog stabla ~lepo objašnjeno - ona slika sa nepotpunim stablom i onda samo dodamo taj fajl i računamo hasheve~  (to traženje malog dela stabla zove se merkle dokaz) da vidimo da li taj podatak uopšte pripada tom skupu podataka i da li je njegov integritet očuvan, da nije došlo do nekog problema
+-zato ne koristimo lanac jer bismo morali sve da pošaljemo kroz mrežu da bismo stigli do roota
+-ovo može biti primenjeno kod različitih tipova aplikacija (ne samo blockchain)
+
+-pr. sistem za skladištenje podataka u amazonu, efikasna verifikacija sadržaja velikih skupova podataka (da ne trošimo mnogo resursa i da ne šaljemo nikako same podatke kroz mrežu da mreža ne postane zagušena)
+-merkle stabla koriste se za sihronizaciju podataka i proveru ispravnosti koija u sistemima sa više čvorova
+-ne moramo porediti čitave podatke nego upoređujemo samo njihove hesh-eve i onda kroz mrežu razmenimo samo taj podskup podataka koji nije dobar
+
+-anti-entropy algoritam - koristi se oporavak, popravku podataka, na sistemima sa više čvorova
+-tri koraka:
+*prvo pravimo merkle stablo za svaki čvor na kome se čuva kopija podataka
+*kad treba da uporedimo te podatke da vidimo da li je došlo do promene odnosno poredimo ta stabla (ako su root hesh-evi isti na svim replikama - podaci su ispravni, nema potrebe šta da menjamo)
+*ako nisu - onda se spuštamo kroz stablo i gledamo na kom delu nam je problem i onda razmenimo samo potrebne setove na tim čvorovima kako bismo uradili popravku
+
+-izgradnja stabla je resursno intenzivna operacija i u nekom kraćem vremenskom intervalu dosta koristi disk (to je cena koju moramo da platimo da ne bismo previše opteretili mrežu ~nema besplatnog ručka)
+-odlučujemo se za tako nešto dokle god je dobitak > gubitka
+-proces izgradnje stabla se često dešava u pozadini (da se ne dešava, npr. zaustavi se ceo amazon..) - te stvari se uvek odvijaju u POSEBNOM THREADU, POSEBNOM PROCESU
+-nikad ne blokiramo celu strukturu da bi se nešto desilo
+-provera kreće od vrha stabla dok ne dođemo do podskupa celokupnog skupa podataka koji je različit
+-kad skontamo šta je razlika, samo taj manji deo, podskup, treba da se popravi i on se šalje kroz mrežu (mi nećemo raditi sa više čvorova u našem projektu)
+
+-n log n visina stabla - binarno stablo
+-ova stabla nisu puno menjana od kad su napravljena, jer kad ih serijalizujemo zauzimamo malo mesta na disku i kad treba nešto da nađemo, možemo koristiti neke strukture da bismo jednostavnije vršili obilazak
+
+-predavanja Džef Dim..? valjda - razvio skoro sve interne sisteme u google-u (priča kako su razvijali prvi distribuirani fajl sistem i verziju baze koja se zove big table)
+-,,mogli smo da napravimo sistem da zadovolji sve moguće tipove aplikacija (npr. ima 10 tipova), ali to će rezultovati izuzetno kompleksnim sistemom za implementaciju, održavanje, verovatno će biti sporo.."
+--> doneli su odluku da 7/10 tipova aplikacija na njihovom sistemu skroz super rade, a ova tri neka se dovijaju, izmene malo način rada da se uklope u tu bazu (to im je omogućilo sisteme relativno jednostavne za implementaciju, održavanje)
+-pokušamo da ne zadovoljimo sve moguće uslove, posebno ako imamo nešto komplikovano, jer ako pokušamo da zadovoljimo sve - verovatno nećemo zadovoljiti nikoga i onda će verovatno naš sistem, te aplikacije, pa i korisnici da trpe
+
+-pr. ako imamo binarno stablo (svejedno da li je merkle), kako ćemo ga zapisati, pročitati iz datoteke
+-ideja celog predmeta je da su problemi koje treba da rešimo relativno kompleksni, a možemo ih relativno jednostavno rešiti; ali ako pokušamo da zadovoljimo sve - verovatno ćemo napraviti haos i konfuziju
+-pošto unapred znamo struk BINARNO, lako ga možemo smestiti na disk, ako je KOMPLETNO, ne moramo čuvati još neke dodatne podatke
+-od stabla pravimo niz i tako ga možemo upisati na disk
+-ako nije kompletno, moramo pisati neke markere da kada čitamo i pišemo pravilno uzmemo šta nam treba
+-kad imamo binarno kompletno stablo - ne moramo imati markere - zato je dobro kad imamo hash stablo
+-moramo se dogovoriti sa timom šta da stavimo za markere, za stvari gde nam stvari fale..
+-zato kod serijalizacije moramo voditi računa da li je stablo binarno i kompletno - ako jeste ne moramo voditi racuna, a ako nije kompletno moramo  zapisivati markere, da zapisivanje i čitanje možemo uraditi na relativno jednostavan i brz način
+(ostavio link čoveka koji je napravio ovo stablo, kako radi amazonova i cassandrina baza koja se koristi za skladištenje poruka sa fb)
+
+-od nekompletnog možemo napraviti kompletno stablo - popunimo nekim praznim čvorovima 

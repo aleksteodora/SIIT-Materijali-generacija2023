@@ -1,0 +1,92 @@
+-ograničenje stope pristupa (rate limiting), algoritam tocken bucket, ttl (time to live)
+-pregled: radili smo različite tipove zaštite (uglavnom zaštite podataka, ako su neispravni - ne čitamo), wal smo koristili da obezbedimo trajnost memorijske strukture, kod wal-a i sstabla imali smo crc koji kaže da li je došlo do nekih grešaka (prvo konsultujemo crc da vidimo da li podaci nisu oštećeni da možemo da ih učitamo)
+-kako razmenjujemo podatke sa drugim učesnicima - pričali smo o strukturi merkle stablo (pod koji je deo nekog većeg skupa), kako kad se podaci nalaze na različitim čvorovima možemo ustanoviti gde su problemi tako što kroz mrežu šaljemo samo mali skup podataka
+-sada želimo uvesti još jednu strukturu, do sada smo uglavnom štitili podatke, sada želimo da vidimo kako da štitimo naš sistem od napada ili preterane upotrebe koje bi uporila sistem, kompakcije ..
+-ako hoćemo da zaustavimo sistem od velike količine zahteva u jedinici vremena 
+-štitimo jer ne želimo da srušimo sistem i degradiramo performanse
+
+-način ograničene stope pristupa - prvo je upotrebljen u računarskim mrežama i koristi se za kontrolu stope zahteva poslatih ili primljenih od strane kontrolera ili nekog mrežnog uređaja (prvo zašta se razvijala ta grupa algoritama rate limiting)
+-rate limiting je procedura kojom određujemo brzinu kojom korisnici mogu da šalju zahteve u sistem, tj. kako će naš sistem njih obrađivati; uglavnom koristimo za zaštitu servera, kompjutera od nekih zlonamernih napada (zahtevi ne moraju nužno biti maliciozni)
+-prednosti - pomaže protiv puno zahteva koji pokušavaju srušiti sistem, može se koristiti i kada imamo određen ograničen broj resursa koje smo platili, pa druga strana hoće da se ograniči da ne koristimo više resursa nego što smo platili
+
+-razni tipovi rate limiting algoritama:
+*rate limiting korisnika - omogućava nekim grupama korisnika da im se ograniči pristup (obično je vezano za njihove ključeve ili id-jeve)
+*rate limiter istovremene serverske brzine - koliko paralelnih desija i veza je dozvoljeno nekim grupama korisnika da imaju, ublazava DDoS napade 
+*rate limiting lokacije - ograničenje brzine pristupa iz nekog regiona na neki vremenski period (koliko često ljudi iz nekih regiona mogu pristupati nekim servisima da bi dobili određene informacije)
+-postoji ih još, ova tri su najzastupljenija i najkorišćenija 
+
+-ovo je prilično star problem, pa i algoritama ima jako puno i svaki od njih ima neke svoje prednosti i mane (nijedan algoritam nije idealan, da postoji samo bismo njega koristili --> nema besplatnog ručka)
+-koji god algoritam i strukturu da odaberemo moramo biti svesni šta on sa sobom nosi..
+
+-rate limiting kod sistema za skladištenje podataka - neki od sistema za skladištenje velike količine podataka su implementirali ovaj mehanizam sa totalno drugačijom namerom i sama ta implementacija izdvaja te sisteme od nekih drugih srodnih ili konkurentnih sistema i zato su češće izbor korisnika u nekim određenim situacijama
+npr. rocksdb se zbog toga češće koristi od leveldb
+
+-veza rate limiting i kompakcija
+-kod upotrebe ovakvih sistema korisnici možda žele da priguše maksimalnu brzinu pisanja u okviru nekog ograničenja iz mnogo razloga
+(brzi zapisi izazivaju strašne skokove kašnjenja čitanja ako se prekorači neki prag) 
+-ako dođe do lančane kompakcije naš sistem se dodatno usporava i ako možemo pogoditi vreme kada će se tako nešto desiti, možemo tada malo prigušiti te zahteve da ne bismo dodatno usporili sistem
+-u svim tim velikim sistemima dajemo ljudima mogućnost da ih konfigurišu u zavisnosti od potreba; ljudi koji su razvijali rocksdb otišli su korak dalje, pa rocksdb pruža čak mogucnost DINAMIČKOG OGRANIČENJA PRISTUPA (auto-tuned data limiting)
+-mašinskog učenja danas ima svuda, pa ima dosta rate limiting algoritama koji su zasnovani na mašinskom učenju (sačuvamo tonu nekih informacija, pustimo neki model koji će pogađati kada će se desiti puno zahteva i ograničimo stopu i brzinu zahteva i onda nešto radimo sa tim i na taj način onda da predviđamo stvari)
+-pr. gde da čuvamo podešenja vezana za limiter (koliko zahteva po jedinici vremena) --> možemo u toj konfiguracionoj datoteci (ako koristimo auto-tuned onda ćemo mu verovatno dati samo neke parametre na osnovu kojih će optimizovati stvari)
+
+-jedan od algoritama za ograničenje stope pristupa je TOCKEN BUCKET - jedan od najjednostavnijih algoritama za ograničenje brzine pristupa; pratimo broj zahteva u zadatom vremeskom intervalu i shodno tome pustimo ili odbijemo zahtev u sistem
+-zbog svoje jednostavnosti jako puno se koristi i to ga ne sprečava da nađe svoju primenu u jako velikim sistemima (google cloud koristi ovaj algoritam za njihov servis koji se zove task queue gde korisnici specificiraju svoje zahteve u nekakav queue i onda sistem redom uzima te zahteve i to radi po algoritmu tocken bucket, da bi odradili sve zahteve, a da ne bi dodatno opteretili sistem)
+-jednostavan za implementaciju, lako se može povezati sa jako velikim brojem slučajeva korišćenja aplikacija, pa je zbog toga često i prva opcija izbora - mozda neće uvek pokazati najbolje performanse, zato imamo i druge algoritme koji imaju svoje prednosti i mane i kojih takođe treba da budemo svesni
+
+-ideja je relativno jednostavna, imamo kantu sa tokenima i kada stižu zahtevi - treba da proverimo da li u toj kanti imamo tokena (ako ima, možemo uzeti jedan token i nastaviti dalje; ako tokena nema u toj kanti, naš zahtev se odbacuje)
+-rate limiting tj. strelica koja ubacuje stvari u kantu je u suštini taj INTERVAL NAKON KOLIKO SE TAJ TOKEN RESETUJE (zato imamo po jedinici vremena, svaki sat, svaki dan itd. se ta kanta popuni do vrha)
+-možda potrošimo, možda ne potrošimo sve zahteve; ako ih potrošimo, moramo čekati neko vreme da se popuni do kraja
+-za svski zahtev korisnika, prvo treba da proverimo da li je vreme proteklo od prethodnog resetovaja brojača (ako vreme nije isteklo, treba da proverimo da li korisnik ima dovoljno preostalih zahteva odnodno preostalih tokena da bi se dolazni zahtev obradio)
+-ako korisnik nema više zahteva na raspolaganju, odbacujemo zahtev uz neku poruku
+-ako ima još tokena u kanti odnosno imamo još zahteva koje možemo obraditi, puštamo zahtev u sistem i smanjujemo brojač za 1 i vršimo obradu nekog zahteva
+-ako je proslo određeno vremensko ograničenje, treba da popunimo kantu i definišemo novo vreme resetovanja (znači gledamo kada je bilo poslednje vreme resetovanja i da li je prošlo dovoljno vremena od tad)
+-znači, sve što ovde treba da uradimo jeste da proverimo da li su vreme zahteva i vreme poslednjeg update-a u razmaku od onog vremena koje smo specificirali nekim ograničenjem (min, sat, dan,..)
+-ako jeste u tom intervalu proverimo da li imamo slobodnih tokena, ako imamo slobodnih tokena - pustimo zahtev  u sistem i smanjimo broj tokena za 1
+-ako stigne zahtev i dalje u tom vremenu u kojem može da se odradi i mi proverimo broj tokena i broj tokena je nula, mi ne možemo da obradimo taj zahtev zato što više nemamo slobodnih tokena i onda vratimo korisniku odgovor nazad
+-međutim, ako stigne zahtev i njegova vremenska odrednica je veća od onoga kad je poslednji put bio update-ovan naš token bucket, mi update-ujemo vreme, povećamo broj tokena na maksimalan broj koliko smo specificirali i onda pustimo zahtev u sistem i smanjimo broj tokena za 1
+da bismo ispravno vodili računa o narednim zahtevima koji budu stizali
+
+-gde da čuvamo vreme kad smo poslednji put update-ovali naš token bucket i broj tokena koji je u njemu?
+-za aplikativne stvari ovako nešto se čuva u memoriji ili nekom sistemu koji čuva podatke u memoriji (ZBOG BRZINE)
+-kada pravimo sistemsku stvar mi te podatke možemo čuvati u našem sistemu jer nemamo taj automatski reset
+(svaki korisnik key, vrednost može da sadrži i vremensku odrednicu i broj tokena kada smo pristupali našem sistemu)
+-taj ključ ne bi trebalo da bude vidljiv korisnicima koji rade zahteve (mi možemo definisati ključeve kako mi hoćemo, npr. neke specijalne simbole na početku ili na kraju)
+-znači možemo iskoristiti vlastiti engine da čuvamo informacije u njega pošto on već čuva nekakve podatke, a pošto imamo onaj keš naša vrednost će praktično stalno biti u memoriji pa ćemo brzo stizati do nje (iskoristili smo sistem da čuvamo informacije u njemu i iskoristili smo njegov podsistem za keširanje tako da nam informacija stalno bude dostupna)
+
+-možemo li nekako automatizovati ovaj proces reseta tokena --> TTL u različitim primenama ima različiti kontekst 
+-kod nas smo ga definisali kao neki vremenski period gde naš paket ili podaci treba da postoje na računaru, bazi, mreži, pre nego što budu odbačeni
+-za naše potrebe smo definisali ttl, sve to radimo da smanjimo potrebe čitanja sa diska
+(ako sačuvamo nešto na disku i imamo nešto što konstantno mora da proverava i prolazi kroz fajlove na disku, onda može doći do problema jer je puno babranja po disku)
+-ali sa druge strane treba da gledamo da ne opteretimo sistem previše ili da ne zavisimo od korisnika
+--> ova tehnika se dosta koristi kod keširanja sadržaja ili sličnih tehnika i pruža mogućnost da podaci budu u memoriji neko duže vreme AKO SE CEŠĆE KORISTE
+-to nam omogućava da ne pravimo nikakve dodatne strukture, ali zahteva da imamo nekakav pozadinski brojač da li je vreme isteklo (neki pozadinski sat koji spava dok ne dođe njegovo vreme)
+-biramo neku tehniku u zavisnosti od tipa aplikacije, primene, podataka
+--> dosta sistema omogućava korisnicima da naprave poseban tip koji će skladištiti - TTL 
+-korisnici treba da obezbede ključ i ttl odnosno koliko dugo u jedinici vremena će podatak biti aktivan i sam podatak koji ćemo da sačuvamo
+-ove tipove ne možemo menjati (ako kažemo pod nekim ključem čuvamo nekakav podatak i kažemo neku vremensku odrednicu koliko on treba da bude sačuvan - ne možemo ga menjati, možemo ga obrisati ili napraviti nov pod tim ključem, pa na taj način update-ujemo ttl)
+
+-kada ttl istekne, mi kao korisnici obično moramo napraviti nov zapis, ali to nije striktno pravilo
+-možemo napraviti neku strukturu npr. broj tokena, kad je poslednji put pristupano i nekakvu vremensku odrednicu i šta se dešava - u pozadini se pali nekakav proces koji broji to vreme i kada ono istekne, on automatski osveži broj tokena i to je sve što ttl radi (napravili smo nekakav specifičan podatak koji u pozadini broji neko vreme i kada odbroji onoliko koliko mu je rečeno da čeka, on javi našem sistemu i onda u suštini možemo automatski da update-ujemo naš broj tokena)
+
+-kada se podaci dodaju u sistem, oni se svakako moraju zapisati u memtable, pa i sstable i sistem može da održava posebnu strukturu sa podacima, ključevima, vremenom i za svaki podatak može da se pokrene poseban sat u pozadini koji odbrojava i kada vreme istekne podatak biva obrisan (ova ideja se može iskoristiti npr. za tocken bucket) da kada vreme istekne da se signalizira da se tokeni resetuju (kaže "e, isteklo je vreme, ajde ti pod ovim ključem update-uj broj tokena")
+-ovo je mehanizam koji se obicno koristi kod sistema koji se bave keširanjem (način kako možemo da update-ujemo taj naš broj tokena)
+-ttl nećemo koristiti u projektu jer nismo još radili sa nitima i tim pozadinskim stvarima
+(npr. na nekim sajtovima gde se čuva slika npr. i posle određenog vremena nestane - verovatno se koristi ttl ili neki sličan mehanizam, ali pozadinska ideja je u suštini identična)
+
+-pored ttl-a, razni sistemi omogućavaju dodatne tipove podataka koji mogu biti specifični za neke primene npr. streaming..
+-sistemi poput redisa i riaka omogućavaju da naprave neke svoje specifične strukture npr. hyperloglog, countmin sketch, bloom filter.. (ne čuvamo konkretne podatke, već čuvamo nekakav fiksan broj bajtova koji se nalazi sačuvan u našem fajl sistemu)
+-ove strukture su se uglavnom nalazile u memoriji, pa je lepo sačuvati ih na neki stabilan medijum ako sistem padne, takođe ne čuvamo konkretne podatke i informacije koje stižu, već čuvamo fiksan broj bajtova koji smo iskoristili da bismo napravili bilo koju od ovih struktura
+-u našem sistemu - struktura je takva da je ključ string, a vrednost nekakav niz bajtova; to je opšti oblik i pogodno da u sistem možemo sačuvati bilo šta što nam padne napamet (samo da znamo pod kojim ključem čuvamo i kako da vratimo korisniku nazad)
+-za specifične tipove možemo napraviti specifičan put (put hll npr.)
+-na taj način obezbedili smo da korisnicima pružimo neke napredne funkcije, a nismo narušili model i nismo ugrozili sistem
+-u sustini smo samo dodali neku dodatnu funkciju u aplikativni, gornji sloj koji komunicira sa našim engine-om, korisnici su srećni i zadovoljni jer mogu proširiti naš sistem
+
+-nosql baze se uglavnom ne razvijaju od nule, naša baza ima neke specifičnosti tako da u sustini mi napravimo samo taj obmotač okolo, taj aplikativni deo gde kažemo naše funkcije
+-nase aplikacije da pravimo tako da uvek razmišljamo šta treba da uradimo, pa kad nađemo opciju, da probamo da to tako isprogramiramo da se lako mogu dodavati nove stvari, proširivati (think twice, code once)
+
+-prefix i range scan - ako hoćemo da dobijemo više informacija koje su vezane (npr. hoćemo da sačuvamo informaciju o jednom korisniku, i zbog drugačije upotrebe npr. hoćemo to da sačuvamo pod više ključeva), onda možemo specificirati prefix - user1_name, user1_lastname, adress, email itd. i onda kažemo našem sistemu get prefiks i možemo dobiti više podataka nazad kao jednu celinu
+-range scan - kažemo od ovog do ovog ključa želim da mi vratiš sve nazad (moramo čitati dosta fajlova, spajati te ključeve i vraćati ih nazad..)
+-distribuirani sistemi - ako napravimo naš sistem da operiše na više cvorova, onda bi ona merkle stabla imala znatno veću primenu jer korisnici mogu pristupati različitim čvorovima; da bismo balansirali njihov način pristupa, može doći do problema, pa imamo tu razmenu informacija kroz mrežu čime se distribuirani sistemi i bave
+
+-"ako razmišljamo, to nam ne garantuje da nećemo napraviti problem, ali ako ne razmišljamo sigurno ćemo napraviti problem"
+-prvo da razmislimo o onome što radimo, da napravimo da je to proširivo, izmenjivo, funkcionalno, konfigurabilno, da vidimo šta su prednosti, šta mane svakog algoritma i strukture koju koristimo i shodno tome donosimo inženjersku odluku koji ćemo od algoritama, struktura koristiti (da se ne svedemo na prosečnog programera koji samo kuca neki kod jer mu je neko nešto rekao)
