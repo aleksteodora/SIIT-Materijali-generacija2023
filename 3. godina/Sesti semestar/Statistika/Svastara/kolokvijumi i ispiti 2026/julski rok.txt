@@ -1,0 +1,18 @@
+prvi: date su 32 karte (4 kralja) i treba naći verovatnoću da su tri puta zaredom izvučeni kraljevi ako se karta:
+a)vraća 
+b)ne vraca
+
+drugi: naći funkciju gustine i očekivanje za Y=√X za U(0,4)
+
+treći je bila Moavr-Laplasova teorema, uglavnom treba da se skonta da je B(100, 1/4) i da se verovatnoća nalazi između 20 i 30
+
+------------------------------------------------------------------------------------------------------------------------------
+
+usmeni:
+meni je bilo pitanje TTest parova
+
+test:
+ovde su se pitanja generalno ponavljala, dovoljno je preći dva testa iz 2024. i testove iz 2020. godine
+jedino novo pitanje bilo je
+
+Šta ne zahteva Velšov test a zahteva ANOVA i treba da se napiše JEDNAKOST DISPERZIJA.

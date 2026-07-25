@@ -1,0 +1,15 @@
+1. Tačkaste ocene parametara i njihove osobine (14 pojavljivanja)
+2. Analiza varijanse (ANOVA) i Fišerova statistika (11 pojavljivanja)
+3. Intervali poverenja za očekivanu vrednost (srednju vrednost $m$) i testiranje $H_0(m = m_0)$ (11 pojavljivanja)
+4. Nejednakost Čebiševa i Zakoni velikih brojeva (9 pojavljivanja)
+5. Jednostavni linearni model i Regresija (8 pojavljivanja)
+6. Metod momenata i Metod maksimalne verodostojnosti (MML) (4 pojavljivanja)
+7. T-test parova (Zavisni uzorci) (3 pojavljivanja)
+8. Neparametarski testovi, $\chi^2$ test i Tabela kontigencije (3 pojavljivanja)
+9. Specijalne raspodele važne za statistiku: Pirsonova ($\chi^2$), Studentova ($t$) i Fišerova ($F$) (3 pojavljivanja)
+10. Centralna granična teorema (CGT) i Moavr-Laplasova teorema (2 pojavljivanja)
+
+---ovaj rok---
+ttest parova i uzoračka disperzija
+tačkaste ocene parametara i osobine
+tabela kontigencije

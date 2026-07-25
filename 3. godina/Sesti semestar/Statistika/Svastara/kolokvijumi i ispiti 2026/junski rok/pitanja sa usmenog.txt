@@ -1,0 +1,5 @@
+rekao je na predavanju da će kao pitanje od 10 poena na pismenom ispitu najverovatnije biti dokaz uzoračke disperzije
+
+ttest parova i uzoračka disperzija
+tačkaste ocene parametara i osobine
+tabela kontigencije

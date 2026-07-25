@@ -1,0 +1,260 @@
+	2020.
+-----------------------------------
+jun---
+-metod momenta i metod maksimalne verodostojnosti, primeri
+
+avgust---
+-Testiranje statistiˇckih hipoteza, parametarski testovi za dva uzorka
+-Taˇckaste ocene parametara, osnovne osobine, Uzoraˇcka aritmetiˇcka sredina i Uzoraˇcka varijansa
+-Analiza varijanse Fišerovom statistikom
+-Jednostavnilinearnimodel,statistiˇckozakljuˇcivanjezaparametre
+-Deskriptivna statistika: modus, medijana, intervalni uzorak, histogram, poligon
+
+februar---
+-Metod momenata i Metod maksimalne verodostojnosti, primeri
+-Analiza varijanse Fišerovom statistikom
+-Testiranje statistiˇckih hipoteza, parametarski testovi za dva uzorka
+-Taˇckaste ocene parametara, osnovne osobine, Uzoraˇcka aritmetiˇcka sredina i Uzoraˇcka varijansa
+-Raspodele važne za Statistiku: χ2 n, tn i Fm,n
+
+januar---
+-Testiranje statistiˇckih hipoteza, parametarski testovi za dva uzorka
+-Analiza varijanse Fišerovom statistikom
+-Jednostavnilinearnimodel,statistiˇckozakljuˇcivanjezaparametre
+-Taˇckaste ocene parametara, osnovne osobine, Uzoraˇcka aritmetiˇcka sredina i Uzoraˇcka varijansa
+-Testiranje statistiˇckih hipoteza, parametarski testovi za dva uzorka
+
+jul---
+-Intervali poverenja za oˇcekivanje obeležja X : N (m,σ) i testiranje hipoteze H0(m =
+m0), σ poznato
+
+oktobar1---
+-Taˇckaste ocene parametara
+-Nejednakost ˇ Cebiševa i zakon velikih brojeva ˇ Cebiševa
+
+oktobar2---
+-Taˇckaste ocene parametara
+-Nejednakost ˇ Cebiševa i zakon velikih brojeva ˇ Cebiševa
+
+septembar---
+-Regresija sluˇcajnih promenljivih
+-Analiza varijanse Fišerovom statistikom
+
+
+
+
+
+	2019.
+-----------------------------------
+april---
+-Jednofaktorska analiza varijanse Fišerovom statistikom
+
+avgust---
+-Jednofaktorska analiza varijanse (ANOVA)
+
+februar---
+-Regresija sluˇcajnih promenljivih X i Y
+-Intervali poverenja za oˇcekivanje obeležja X : N (m,σ) i testiranje hipoteze H0(m =
+m0), σ poznato
+-Jednostavni linearni model
+-Zakoni velikih brojeva
+-Neparametarske hipoteze
+-Taˇckaste ocene parametara, osobine
+
+januar---
+-Regresija sluˇcajnih promenljivih X i Y
+-Intervali poverenja za oˇcekivanje obeležja X : N (m,σ) i testiranje hipoteze H0(m =
+m0), σ poznato
+-Jednostavni linearni model
+-Jednofaktorska jednosmerna analiza varijanse (ANOVA)
+-Intervali poverenja za oˇcekivanje obeležja X : N (m,σ) i testiranje hipoteze H0(m =
+m0), σ nepoznato
+-Taˇckaste ocene parametara, osobine
+
+jul---
+-Taˇckaste ocene parametara
+
+jun---
+-Intervali poverenja za disperziju σ2 obeležja X : N (m,σ)
+
+oktobar---
+-Neparametarskitestovi:χ2-testiTabelakontigencije
+-Testiranje hipoteza: Greške prve i druge vrste; Parametarske hipoteze
+(opšti postupak testiranja), primer H0(m = m0) protiv H1(m= m0) za X : N (m,σ),
+σ poznato
+
+oktobar2---
+-Normalna raspodela i Centralne graniˇcne teoreme
+-Taˇckaste ocene parametara, osobine
+
+septembar---
+-Pirsonova, Studentova i Fišerova raspodela (χ2,t i f)
+
+
+
+
+
+	2018.
+-----------------------------------
+avgust---
+Definisati Slabi zakon velikih brojeva za niz sluˇcajnih promenljivih X1,X2,...
+Napisati Bernulijev slabi zakon velikih brojeva
+Interval poverenja za varijansu σ2 obeležja sa normalnom raspodelom X : N (m,σ)
+
+jul---
+Definicija: Za niz sluˇcajnih promenljivih X1,X2,... važi Centralna graniˇcna teorema ako ...
+Dati jedan dovoljan skup uslova da za niz sluˇcajnih promenljivih X1,X2,... važi CGT
+Kako glasi Moavr-Laplasova teorema i dokaz preko CGT?
+
+jun---
+Napisati i dokazati nejednakost ˇ Cebiševa
+Definisati Slabi zakon velikih brojeva za niz sluˇcajnih promenljivih X1,X2,...
+Napisati i dozazati slabi zakon velikih brojeva ˇ Cebiševa
+
+oktobar---
+Neparametarske hipoteze
+
+oktobar2---
+Intervali poverenja za oˇcekivanje obeležja X : N (m,σ) i testiranje hipoteze H0(m = m0) kada je σ
+poznato
+
+septembar2---
+-Nejednakost ˇ Cebiševa i zakon velikih brojeva ˇ Cebiševa
+-Numeriˇcke karakteristike sluˇcajne promenljive
+-Intervali poverenja za oˇcekivanje obeležja X : N (m,σ) i testiranje hipoteze H0(m =
+m0)
+
+februar---
+1. Nejednakost ˇ Cebiševa i zakon velikih brojeva ˇ Cebiševa
+2. Statistika- osnovni pojmovi, važne statistike
+1. Numeriˇcke karakteristike sluˇcajne promenljive
+2. Pirsonova, Studentova i Fišerova raspodela (χ2,t i f)
+1. Transformacija sluˇcajne promenljive
+2. Jednofaktorska jednosmerna analiza varijanse (ANOVA)
+1. Uslovna verovatno´ca
+2. Jednostavni linearni model
+
+januar---
+1. Numeriˇcke karakteristike dvodimenzionalne sluˇcajne promenljive
+2. Linearna regresija najmanjih kvadrata
+1. Prostor verovatno´ce
+2. Statistiˇcki testovi, greška I i II vrste, parametarske i neparametarske hipoteze, jednostrani testovi
+1. Zakoni velikih brojeva
+2. Metod momenata i metod maksimalne verodostojnosti, primeri
+1. Uslovna verovatno´ca
+2. Linearna regresija najmanjih kvadrata
+1. Sluˇcajna promenljiva
+2. Testiranje jednakosti srednjih vrednosti i testiranje varijansi dva obeležja sa normalnom raspodelom
+
+
+
+
+
+	2017.
+-----------------------------------
+april---
+E1 Kako glasi zakon raspodele Poasonove raspodele?
+E2 Ako je90%intervalpoverenjazam(10,14), daliodbacujemonultuhipotezu
+H0(m=11) sa pragom znaˇcajnosti 5%?
+T Taˇckaste ocene parametara
+
+E1 Kako glasi zakon raspodele Binomne raspodele?
+E2 Kako glasi Nulta hipoteza u ANOVA testu?
+T Interval poverenja za oˇcekivanje m obeležja X : N (m,σ), σ poznato.
+
+E1 Koji test koristimo za testiranje jednakosti srednjih vrednosti mase ispi
+tanika pre i posle dijete?
+E2 Kako se raˇcuna uzoraˇcka korigovana standardna devijacija?
+T Numeriˇcke karakteristike dvodimenzionalne sluˇcajne promenljive.
+
+E1 Kako glasi funkcija raspodele Eksponencijalne raspodele?
+E2 Ako je vrednost Fišerove statistike f3,26 = 32.614, a tabliˇcna vrednost 0.95
+kvantila jednaka f3,26;0.95 =2.97, da li odbacujemo Nultu hipotezu u ANOVA
+testu?
+T Linearna regresija najmanjih kvadrata
+
+E1 Definicija nezavisnosti dva doga¯daja.
+E2 Skicirati uzoraˇcku funkciju raspodele uzorka 3,2,3,5,1,6.
+T Uzoraˇcka disperzija
+
+E1 Na´ci konstantu a > 0 i funkciju raspodele sluˇcajne promenljive X ˇcija je
+gustina ϕX(x) = ax,x ∈ (1,2).
+E2 Izraˇcunati Medijanu i Interkvartilni razmak uzorka 15,13,7,3,12,14.
+T Nejednakost ˇ Cebiševa
+
+avgust---
+E1 Koji test koristimo za testiranje jednakosti srednjih vrednosti mase ispi
+tanika pre i posle dijete?
+E2 Kako se raˇcuna uzoraˇcka korigovana standardna devijacija?
+T Numeriˇcke karakteristike dvodimenzionalne sluˇcajne promenljive
+
+jul---
+E1 Kako glasi funkcija raspodele uniformne U (a,b) raspodele?
+E2 Kako glasi Nulta hipoteza u ANOVA testu?
+T Interval poverenja za oˇcekivanje m obeležja X : N (m,σ), σ nepoznato
+
+E1 Koji test koristimo za testiranje jednakosti srednjih vrednosti mase ispi
+tanika pre i posle dijete?
+E2 Kako se raˇcuna uzoraˇcka korigovana standardna devijacija?
+T Numeriˇcke karakteristike dvodimenzionalne sluˇcajne promenljive
+
+E1 Kako glasi funkcija raspodele Eksponencijalne raspodele?
+E2 Ako je vrednost Fišerove statistike f3,26 = 32.614, a tabliˇcna vrednost 0.95
+kvantila jednaka f3,26;0.95 =2.97, da li odbacujemo Nultu hipotezu u ANOVA
+testu?
+T Interval poverenja za oˇcekivanje m obeležja X : N (m,σ), σ poznato
+
+E1 Definicija nezavisnosti dva doga¯daja.
+E2 Skicirati uzoraˇcku funkciju raspodele uzorka 3,2,3,5,1,6.
+T Uslovna verovatno´ca
+
+E1 Na´ci konstantu a > 0 i funkciju raspodele sluˇcajne promenljive X ˇcija je
+gustina ϕX(x) = ax,x ∈ (1,2).
+E2 Izraˇcunati Medijanu i Interkvartilni razmak uzorka (7,9,3,14,15,12,1).
+T Test Kolmogorov-Smirnov
+
+septembar---
+E1 Jednake parcele zemljišta su ¯dubrene ¯dubrivima A, B, C i D. Zabeleženo je
+15 prinosa ¯dubrenih ¯dubrivom A, 12 ¯dubrenih sa B, 14 sa C i 16 sa D.
+Koji statistiˇci test se koristi za testiranje hipoteze o jednakosti prinosa?
+E2 Definicija uslovne verovatno´ce.
+T Normalna raspodela
+
+septembar2---
+E1 Kako se dobija gustina iz funkcije raspodele?
+E2 Kako glasi Nulta hipoteza u χ2 testu tabele kontigencije?
+T Sluˇcajne promenljive, Funkcija raspodele, osobine funkcije raspodele, Funk
+cija raspodele diskretne sluˇcajne promenljive
+
+
+
+
+
+---------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------
+								NOOVIJE
+---------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------
+	junski ove godine
+-----------------------------------
+ttest parova i uzoračka disperzija
+tačkaste ocene parametara i osobine
+tabela kontigencije
+
+
+
+
+
+	2024.
+-----------------------------------
+jul---
+T-test parova
+Intervali poverenja za srednju vrednost
+Uzoraˇcka varijansa
+
+septembar1---
+Uzoraˇcka varijansa
+T-test parova
+Intervali poverenja za srednju vrednost
