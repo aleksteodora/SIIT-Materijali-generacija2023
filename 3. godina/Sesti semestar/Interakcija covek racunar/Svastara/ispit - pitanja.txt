@@ -1,0 +1,59 @@
+---------------------------------------------------------------------------------------------
+PITANJA OD PROŠLE GODINE
+---------------------------------------------------------------------------------------------
+Nama je za prvi usmeni bilo:
+1. Boje
+2. WIMP
+3. II zlatno pravilo
+
+Grupa A:
+1. Stil interakcije - komandna linija
+2. Nilsenovo pravilo - estetičan i minimalističan dizajn
+3. Tekst
+B:
+1. Stil interakcije WIMP
+2. Nilsenovo pravilo - oponašanje pravog sveta
+3. Kako se boje koriste za interakciju
+
+---------------------------------------------------------------------------------------------
+šta je neko poslao na grupi da je rekao za ovu godinu
+---------------------------------------------------------------------------------------------
+Znam da je za istoriju i togs rekao da se preskaču. 
+Evo šta je rekao kao pitanja: 
+-Kako do dobrog UX?
+-Kako su povezani UX i UI?
+-Razlika UX i UI?
+-Normanov model kako se koristi i kako se ispravljaju greske njime?
+-Komandna linija mane i prednosti?
+-WIMP mane i prednosti?
+-Direktna manipulacija
+-Nielsenova pravila i Šnajdermanova pravila povezati i koja je razlika?
+-Softverski elementi interakcije?
+-Boja kako i gde se koristi?
+-Tekst kako i gde se koristi?
+-Dizajnerski prostor
+
+---------------------------------------------------------------------------------------------
+ispit 25.6.2026. - predrok
+---------------------------------------------------------------------------------------------
+Grupa B:
+1. 8 zlatnih pravila - informativni fidbek
+2. Medium fideliti prototip
+3. Vrste testiranja upotrebljivosti - sumativno testiranje
+
+Grupa A:
+1. Osam zlatnih pravila - pravilo težnje ka konzistentnosti
+2. Ukratko objasniti medium low fidelity prototip
+3. Testiranje upotrebljivosti - testiranje pristupačnosti
+
+Grupa C:
+1. Osam zlatnih pravila - prevencija i rukovanje greškama
+2. Ukratko objasniti medium high prototip
+3. Testiranje interfejsa - formativna ocena
+
+---------------------------------------------------------------------------------------------
+ispit 6.7.2026. - junski rok
+---------------------------------------------------------------------------------------------
+Normanovi principi
+LLM korisnici prednosti i mane
+HCI multidisciplinarnost
